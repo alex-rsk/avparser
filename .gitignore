@@ -27,4 +27,4 @@ yarn-error.log
 /.vscode
 /.zed
 
-storage/profiles
+storage/profiles/*

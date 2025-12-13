@@ -4,12 +4,14 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Services\HeadlessBrowser\HeadlessBrowserWrapper;
-use Illuminates\Support\Facades\Log;
+use Illuminate\Support\Facades\Log;
 use HeadlessChromium\Page;
 use App\Models\Ad;
+use App\Models\SearchQuery;
 
 class CollectPagesCommand extends Command
 {
+    protected $browser = null;
     /**
      * The name and signature of the console command.
      *
@@ -24,37 +26,9 @@ class CollectPagesCommand extends Command
      */
     protected $description = 'Collect pages with ads';
 
-
-    private function emulateHumanType(Page $tab,  string $text, int $gaps = 1) {
-        $length = mb_strlen($text);
-        $gapPositions = [];
-        $previousGap = 0;    
-        for ($i = 0; $i < $gaps; $i ++) {
-            $nextGap =   random_int($previousGap+1, $length/2+$previousGap);
-            $gapPositions[] = $nextGap-$previousGap;
-            $previousGap = $nextGap;
-        }
-        
-        $pieces  = [];
-        $ppos = 0;
-     
-        foreach ($gapPositions as $gp) {
-            $pieces[] = ['text' => mb_substr($text, $ppos, $gp), 'delay' => random_int(80, 150) ];
-            $ppos += $gp;
-        }
-
-        if ($gp < $length) {
-            $pieces[] = ['text' => mb_substr($text, $ppos, $length), 'delay' => random_int(80,150) ];
-        }
-
-        foreach ($pieces as $piece) {
-            $tab->keyboard()->setKeyInterval($piece['delay']);
-            $tab->keyboard()->typeText($piece['text']);
-        }
-    }
-
-    private function collectPages(string $query) : bool {
-           $params            = [
+    private function initBrowser() 
+    {
+        $params            = [
             //путь к библиотеке скриптов
             'scripts'               => resource_path('js/headless-scripts'),
             // режим без GUI
@@ -84,33 +58,75 @@ class CollectPagesCommand extends Command
         ];
 
 
-        $w = HeadlessBrowserWrapper::factory($params);
-        $w->navigateTab(0, 'https://avito.ru/');
+        $this->browser = HeadlessBrowserWrapper::factory($params);
+        $this->browser->navigateTab(0, 'https://avito.ru/');
         sleep(random_int(1, 3));
+    }
+
+    private function search(string $query) {
         $searchSelector = '#bx_search > div.index-suggest-Me4w_ > div > div > label > div > div > div > input';
-        $tab = $w->getTab(0);
+        $tab = $this->browser->getTab(0);
         sleep(random_int(1, 3));
         $tab->mouse()->find($searchSelector)->click();
 
-        $this->emulateHumanType($tab, $query, 2);
+        $this->emulateHumanType($tab, $query, 3);
         sleep(random_int(1, 3));
         $tab->keyboard()->typeRawKey("\r");
         sleep(random_int(4, 6));
+    }
+
+    private function emulateHumanType(Page $tab,  string $text, int $gaps = 1) {
+        $length = mb_strlen($text);
+        $gapPositions = [];
+        $previousGap = 0;    
+        for ($i = 0; $i < $gaps; $i ++) {
+            $nextGap =   random_int($previousGap+1, $length/2+$previousGap);
+            $gapPositions[] = $nextGap-$previousGap;
+            $previousGap = $nextGap;
+        }
+        
+        $pieces  = [];
+        $ppos = 0;
+     
+        foreach ($gapPositions as $gp) {
+            $pieces[] = ['text' => mb_substr($text, $ppos, $gp), 'delay' => random_int(100, 200) ];
+            $ppos += $gp;
+        }
+
+        if ($gp < $length) {
+            $pieces[] = ['text' => mb_substr($text, $ppos, $length), 'delay' => random_int(80,150) ];
+        }
+
+        foreach ($pieces as $piece) {
+            $tab->keyboard()->setKeyInterval($piece['delay']);
+            $tab->keyboard()->typeText($piece['text']);
+        }
+    }
+
+    private function collectAds() : ?array
+    {        
         $itemsSelector =  '//div[@data-marker="item"]//h2/a[@itemprop="url"]';
-        //$items = $tab->dom()->search($itemsSelector);
-        $items = $w->runScript(0, 'avito/find_ads', ['elementSelector' => $itemsSelector, 'Xpath' => true]);
+
+        $items = $this->browser->runScript(0, 'avito/find_ads', ['elementSelector' => $itemsSelector, 'Xpath' => true]);
 
         $result = false;
 
         if ($items) {
-            $preparedItems = Ad::prepareInsertData($items, 1);
-            $result = Ad::insert($preparedItems);
+            return $items;
         }
         else {
             Log::channel('daily')->warning('no items');
+            return [];
         }
+    
+    }
 
-        return $result;
+    private function getTotalPages() : ?int 
+    {
+        $selector = '//ul[@data-marker="pagination-button"]/li[position()=last()-1]';
+        $count = $this->browser->runScript(0, 'get_element_content', ['elementSelector' => $selector, 'Xpath' => true]);
+        dump('Pages count: ' . $count);             
+        return $count ? intval($count)  : null;
     }
 
     /**
@@ -118,10 +134,21 @@ class CollectPagesCommand extends Command
      */
     public function handle()
     {
-       $searchQueries = SearchQuery::query()->select('query')->orderBy('observed_at', 'DESC')->limit(1)->get();
+       $searchQueries = SearchQuery::query()->select(['id', 'query_text'])->orderBy('observed_at', 'DESC')->limit(1)->get();
+       $this->initBrowser();
        foreach ($searchQueries as $query) {
-           $result = $this->collectPages($query->query);
-           $query->update(['observed_at' => now()]);
+
+           $this->search($query->query_text);
+
+           $totalPages = $this->getTotalPages();
+
+           $items = $this->collectAds();
+           Log::channel('daily')->debug('Parsed '.count($items).' ads');
+           $query->update(['observed_at' => now(), 'total_pages' => $totalPages,]);
+
+           $preparedItems = Ad::prepareInsertData($items, $query->id);
+           
+           Ad::insert($preparedItems);
        }
     }
 }
