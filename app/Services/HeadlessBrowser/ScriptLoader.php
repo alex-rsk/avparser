@@ -1,8 +1,9 @@
 <?php
-namespace Services\HeadlessBrowser;
+namespace App\Services\HeadlessBrowser;
 
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 
 /*
  * Класс для загрузки javascript 
@@ -25,6 +26,7 @@ class ScriptLoader
      *      
      */    
     private $cache = null;
+    
 
     /**
      * Конструктор
@@ -36,17 +38,16 @@ class ScriptLoader
     public function __construct($path, $clearCache = false)
     {
         $config  = config('headless-chrome');
-        $this->cache = Cache::getRedis();
         if ($clearCache)
         {
-            $keys = $this->cache->keys($config('cache_keys_prefix').':*');
+            $keys = Redis::keys($config['cache_keys_prefix'].'*');
             $self = $this;
             array_walk($keys, function ($key) use ($self) {
-                $self->cache->delKey($key);
+                Redis::del($key);
             });
 
         }
-        $this->path =  resource_path('js/headless-scripts');
+        $this->path =  $path;
     }
 
     
@@ -60,26 +61,27 @@ class ScriptLoader
      * 
      * @throws Exception
      */
-    public function load($name, $params = [])
+    public function load(string $name, array $params = [])
     {           
         $config  = config('headless-chrome');
         $path = $this->path.DIRECTORY_SEPARATOR.$name.'.js';
-        $cacheKey = $config('cache_keys_prefix').':'.$name;
-        if (($script = $this->cache->getString($cacheKey, false)))
+        $cacheKey = $config['cache_keys_prefix'].$name;
+        if (($script = Redis::get($cacheKey)))
         {
             $scriptTemplate = $script;
         }
         else 
         {
             if (!file_exists($path)) {
-                throw new \Exception('Скрипт' . $path . ' не найден');
+                throw new \Exception('Скрипт ' . $path . ' не найден');
             }        
             $scriptTemplate = file_get_contents($path);
-            $this->cache->setString($cacheKey, $scriptTemplate);
+            Redis::set($cacheKey, $scriptTemplate);
         }        
         $templateKeys = array_map(function ($item) {
             return '{{' . $item. '}}';
-        }, array_keys($params));        
+        }, array_keys($params));
+
         return str_replace($templateKeys, $params, $scriptTemplate);
     }
 }

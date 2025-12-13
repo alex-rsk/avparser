@@ -1,5 +1,5 @@
 <?php
-namespace Services\HeadlessBrowser;
+namespace App\Services\HeadlessBrowser;
 
 
 class BrowserFailedException extends \Exception

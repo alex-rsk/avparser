@@ -1,0 +1,4 @@
+((query) => 
+{  
+  return window.scrollY;
+})();

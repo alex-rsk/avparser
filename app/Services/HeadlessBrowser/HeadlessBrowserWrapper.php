@@ -1,14 +1,14 @@
 <?php
-namespace Services\HeadlessBrowser;
+namespace App\Services\HeadlessBrowser;
 
-use Services\HeadlessBrowser\BrowserFailedException;
+use App\Services\HeadlessBrowser\BrowserFailedException;
 use Illuminate\Support\Facades\Log;
 use \HeadlessChromium\Page;
 use \HeadlessChromium\BrowserFactory;
 //use \Components\GHC\BrowserFactoryExt;
 //use \Components\GHC\PageExt;
 use \HeadlessChromium\Communication\Message;
-use Services\HeadlessBrowser\ScriptLoader;
+use App\Services\HeadlessBrowser\ScriptLoader;
 /**
  * Класс для одного инстанса GHC
  *  Создание инстанса, управление вкладка
@@ -128,11 +128,12 @@ class HeadlessBrowserWrapper
     public static function factory($params)
     {            
         $config = config('headless-chrome');
-        $cmd = $config['browser_bin'].' --version';
-        $output = preg_match('#Chrome|Chromium|Canary#', shell_exec($cmd));
+        $cmd = $config['browser_bin'].' --version';        
+        $res = shell_exec($cmd);
+        $output = preg_match('~(Chrome|Chromium|Canary)~i', $res, $matches);
         if (empty($output))
         {
-            Log::debug('Браузер не установлен');
+            Log::channel('browser')->debug('Браузер не установлен');
             throw new \Exception('Браузер не установлен');
         }        
         $browser = new self($params);
@@ -159,12 +160,12 @@ class HeadlessBrowserWrapper
             strtolower($matches[0]) : false;
         if (!$browser)
         {
-            Log::debug('Неправильное имя браузера: '.$bin);
+            Log::channel('browser')->debug('Неправильное имя браузера: '.$bin);
             return false;
         }
         $browserGrep = '['.substr($browser,0,1).']'.substr($browser,1);
         $checkCommand = 'ps -eaf | grep "'.$browserGrep.'.*thread-id-'.$instanceNumber.'" | awk \'$1 ~ /./ {print $2}\'';
-        Log::debug('Check command ' . $checkCommand);
+        Log::channel('browser')->debug('Check command ' . $checkCommand);
         $pids = [];
 
         exec($checkCommand, $pids);
@@ -173,10 +174,10 @@ class HeadlessBrowserWrapper
         {
             foreach ($pids as $pid)
             {
-                Log::debug('Пытаемся убить процесс браузера '.$instanceNumber.' PID:'.$pid, 'ghc_browser_errors',);
+                Log::channel('browser')->debug('Пытаемся убить процесс браузера '.$instanceNumber.' PID:'.$pid);
                 if (!posix_kill($pid, 9)) // 9 - сигнал SIGKILL.
                 {
-                    Log::debug('Не смогли остановить процесс SIGKILLом'.$pid);
+                    Log::channel('browser')->debug('Не смогли остановить процесс SIGKILLом'.$pid);
                     return false;
                 }
             }
@@ -205,7 +206,7 @@ class HeadlessBrowserWrapper
         $browser = preg_match('#chromium|chrome|canary#si', $bin, $matches) ?
             strtolower($matches[0]) : false;
         if (!$browser) {
-            Log::warning('Браузер '.$bin.' не обнаружен ');
+            Log::channel('browser')->warning('Браузер '.$bin.' не обнаружен ');
             return false;
         }
         exec('pkill -9 '.$browser);
@@ -226,13 +227,13 @@ class HeadlessBrowserWrapper
         $socketExists =  file_exists($this->socketFile);
         $browser = false;
         if ($socketExists) {
-            Log::debug('Файл сокета существует, ID потока: '.$params['thread_id']);
+            Log::channel('browser')->debug('Файл сокета существует, ID потока: '.$params['thread_id']);
             $socket = file_get_contents($this->socketFile);
             try {
-                $browser = BrowserFactoryExt::connectToBrowserExt($socket, []);
+                $browser = BrowserFactory::connectToBrowser($socket, []);
                 $this->created = false;
             } catch (\HeadlessChromium\Exception\BrowserConnectionFailed $e) {
-                Log::warning('Ошибка подключения. ID потока: '.$params['thread_id'].' Сообщение:' .$e->getMessage());
+                Log::channel('browser')->warning('Ошибка подключения. ID потока: '.$params['thread_id'].' Сообщение:' .$e->getMessage());
                 self::checkHangingProcess($params['thread_id'], $params['user_data_dir']);
                 @unlink($this->socketFile);
             }
@@ -288,6 +289,7 @@ class HeadlessBrowserWrapper
         if (isset($params['fresh_start']) && $params['fresh_start']
             && isset($params['thread_id'])) {
             self::checkHangingProcess($params['thread_id'], $params['user_data_dir']);
+            @unlink($this->socketFile);
         }
 
         if (!empty($params['scripts'])) {
@@ -380,7 +382,7 @@ class HeadlessBrowserWrapper
                 {
                     $cookies = json_decode($params['cookies'], true);
                     if (json_last_error() !== \JSON_ERROR_NONE) {
-                        Log::warning('Ошибка в cookies : '.print_r($params['cookies'], true));
+                        Log::channel('browser')->warning('Ошибка в cookies : '.print_r($params['cookies'], true));
                     }
                 }
                 $clearCookies = isset($params['clear_cookies']) && $params['clear_cookies'];
@@ -402,8 +404,8 @@ class HeadlessBrowserWrapper
         }
         catch (\Exception $ex)
         {
-            throw new BrowserFailedException($ex->getMessage(), $ex->getCode(),
-                $this->process, $ex);
+            Log::channel('browser')->error('Ошибка запуска браузера: '.$ex->getMessage().' '.$ex->getTraceAsString());
+            //throw new BrowserFailedException($ex->getMessage(), $ex->getCode()                $ex);
         }
     }
 
@@ -425,7 +427,7 @@ class HeadlessBrowserWrapper
     {
 
         $config = config('headless-chrome');
-
+        dump($config);
         $this->status = 'busy';
         $page         = $this->browser->createPage();
         $viewPort = explode(',', $config['viewport']);
@@ -510,8 +512,8 @@ class HeadlessBrowserWrapper
     /**
      * Переключиться на вкладку
      * 
-     * @param int $number
-     * @return boolean
+     * param int $number
+     * return boolean
      */
     /*
     public function switchTab($number)
@@ -525,6 +527,21 @@ class HeadlessBrowserWrapper
         $connection->sendMessageSync(new Message('Target.activateTarget', ['targetId' => $targetId]));
     }
     */
+
+
+    /**
+     *  Получить вкладку
+     * 
+     * @param int $number
+     * 
+    */
+    public function getTab($number) : ?Page 
+    {
+        if (!isset($this->tabs[$number])) {
+            return null;
+        }
+        return $this->tabs[$number];
+    }
 
     /**
      * Переход на страницу
@@ -557,17 +574,19 @@ class HeadlessBrowserWrapper
      * 
      * @return mixed
      */
-    public function runScript($script, $params = [], $number = null, 
+    public function runScript($number = 0, $script, $params = [], 
         $timeout = 5, $waitForReload = false)
     {
         $number = $number ?? $this->currentTab;
         $scriptSource = $this->scriptLoader->load($script, $params);
+        echo $scriptSource;
+        echo PHP_EOL;
         if (empty($scriptSource))
         {
             throw new \Exception('Скрипт '.$script.' не найден');
         }
         if (!isset($this->tabs[$number])) {
-            Log::info('Вкладка '.$number.' закрыта или не существует', 'ghc_browser_errors');
+            Log::channel('browser')->info('Вкладка '.$number.' закрыта или не существует');
             return false;
         }
 
@@ -619,7 +638,7 @@ class HeadlessBrowserWrapper
         }
         catch (\Exception $e)
         {
-            Log::warning('Произошло исключение при клике '.$e->getMessage());
+            Log::channel('browser')->warning('Произошло исключение при клике '.$e->getMessage());
         }
         /*
         $chars = preg_split('//u', $text, null, PREG_SPLIT_NO_EMPTY);
@@ -754,7 +773,7 @@ class HeadlessBrowserWrapper
             }
             catch (\Exception $e)
             {
-                Log::warning('Ошибка отправки сообщения остановки перехвата' .$e->getMessage());
+                Log::channel('browser')->warning('Ошибка отправки сообщения остановки перехвата' .$e->getMessage());
             }
         }
     }

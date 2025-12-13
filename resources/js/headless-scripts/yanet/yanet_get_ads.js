@@ -1,0 +1,4 @@
+(() => 
+{  
+  return window.myads;
+})();
