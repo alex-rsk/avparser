@@ -11,11 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('ads', function (Blueprint $table) {
-            $table->id();
-            $table->string('title', 255);
-            $table->string('region');
-            $table->timestamps();
+         Schema::create('search_queries', function (Blueprint $table) {
+            $table->unsignedInteger('id')->autoIncrement();
+            $table->string('query_text', 1024);
+            $table->integer('total_pages')->nullable();
+            $table->integer('last_seen_page')->nullable();
+            $table->text('last_error')->nullable();
+            $table->dateTime('created_at');
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('observed_at')->nullable();
+
+            $table->primary('id');
         });
     }
 
@@ -24,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('search_queries');
     }
 };
