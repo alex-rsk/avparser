@@ -7,6 +7,7 @@ use App\Services\HeadlessBrowser\HeadlessBrowserWrapper;
 use Illuminate\Support\Facades\Log;
 use HeadlessChromium\Page;
 use App\Models\Ad;
+use App\Models\AdView;
 use App\Models\SearchQuery;
 
 class VisitAdsCommand extends Command
@@ -68,7 +69,7 @@ class VisitAdsCommand extends Command
     {
         $selector = '//span[@data-marker="item-view/item-price"]';
         $price = $this->browser->runScript(0, 'get_element_content', ['elementSelector' => $selector, 'Xpath' => true]);
-        return $price ? floatval(str_replace(' ','', $price)) : null;
+        return $price ? floatval(preg_replace('~[^\d]~ ','', $price)) : null;
     }
 
     private function getViews() : array
@@ -88,8 +89,8 @@ class VisitAdsCommand extends Command
         $avgRatingsSelector = 'div.seller-info-rating>span:nth-child(1)';
         $avgRating = $this->browser->runScript(0, 'get_element_content', ['elementSelector' => $avgRatingsSelector, 'Xpath' => false]);
         $result['average_rating'] = floatval(str_replace(',', '.', $avgRating));
-        sleep(2);
 
+        //sleep(2);
         //$ratingsSelector = 'a[data-marker="rating-caption/rating"]';
         //$this->browser->getTab(0)->mouse()->find($ratingsSelector)->click();
 
@@ -116,7 +117,7 @@ class VisitAdsCommand extends Command
                 'average_rating' => $ratings['average_rating']
             ];
         } 
-        catch (\Exception $ex) {
+        catch (\Exception $ex) { 
             Log::channel('daily')->warning('Error getAdInfo: '.$ex->getMessage().' '.$ex->getTraceAsString());
             return null;
         }
@@ -135,19 +136,29 @@ class VisitAdsCommand extends Command
        
        $this->initBrowser();
        foreach ($ads as $ad) {
-           $adInfo =$this->getAdInfo($ad->clean_url, $ad->title);
-           if (empty($adInfo)) {
+            dump($ad->id);
+            $adObj = Ad::find($ad->id);
+            $adInfo =$this->getAdInfo($ad->clean_url, $ad->title);
+            if (empty($adInfo)) {
                 continue;
-           }
-           Ad::update(['id' => $ad->id], [
+            }
+            $adObj->update([
                 'status' => 'visited',
                 'title' => $ad->title,
                 'price' => $adInfo['price'],
-                'rating' => $adInfo['average_rating'],                
-                'search_query_id' => $ad->search_query_id,
+                'rating' => $adInfo['average_rating'],
                 'last_visited_at' => now(),
                 'created_at' => now(),
-           ]);
-       }        
+            ]);
+
+            $viewsObj = AdView::create([
+                'ad_id' => $adObj->id,
+                'plus_views' => $adInfo['today_views'], 
+                'total_views' => $adInfo['total_views'],
+                 'created_at' => now()
+            ]);
+            $viewsObj->save();
+
+       }
     }
 }

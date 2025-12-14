@@ -17,7 +17,7 @@ return new class extends Migration
             $table->enum('status', ['new', 'visited', 'error', 'other'])->default('new');
             $table->string('title', 255);
             $table->string('vendor', 255)->nullable();
-            $table->double('price')->default(0);
+            $table->double('price')->default(0)->nullable();
             $table->double('rating')->nullable();
             $table->unsignedBigInteger('avito_id')->nullable();
             $table->dateTime('placed_at')->nullable();

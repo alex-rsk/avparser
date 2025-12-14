@@ -4,6 +4,10 @@ namespace App\Models;
 
 
 use Illuminate\Database\Eloquent\Model;
+use Illumiinate\Database\Eloquent\Relations\HasMany;
+use Illumiinate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\AdView;
+use App\Models\SearchQuery;
 
 class Ad extends Model
 {
@@ -26,5 +30,15 @@ class Ad extends Model
             ];
         }
         return $prepared;
+    }
+
+    public function views() 
+    {
+        return $this->hasMany(AdView::class);
+    }
+
+    public function searchQuery() 
+    {
+        return $this->belongsTo(SearchQuery::class, 'search_query_id', 'id');
     }
 }
