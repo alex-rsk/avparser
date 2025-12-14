@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use HeadlessChromium\Page;
 use App\Models\Ad;
 use App\Models\AdView;
+use App\Models\AdReview;
 use App\Models\SearchQuery;
 
 class VisitAdsCommand extends Command
@@ -39,13 +40,13 @@ class VisitAdsCommand extends Command
             //имя инстанса
             'user_data_dir'         => 'avito1',
             //открываемый URL
-            'url'                   => 'https://ya.ru',
+            'url'                   => 'https://avito.ru',
             //порт для связи с браузером
             //'debug_port'            => $this->portNumber + $this->instance - 1,
             //очистка кэша скрипта    
             'clear_script_cache'    => true,
             //каждый раз стартовать принудительно новый инстанс
-            'fresh_start'           => true,
+            'fresh_start'           => false,
             //событие загрузки страницы, после которого разрешено выполнять скрипты
             'onload_event'          => 'page',
             //Отключить уведомления
@@ -55,7 +56,7 @@ class VisitAdsCommand extends Command
             //ID потока
             'thread_id'             => 'test-thread',
             //прокси
-            //'proxy'                 => $this->account['proxy'],
+            //'proxy'                 => '176.9.113.112:48000:889946558:41V9JHxLBsNiTvD8Lcrw',
         ];
 
 
@@ -85,14 +86,20 @@ class VisitAdsCommand extends Command
 
     private function getRatings(string $title) : array
     {
-        $result = ['average_rating' => 0, 'ratings' => []];
+        $result = ['average_rating' => 0, 'reviews' => []];
         $avgRatingsSelector = 'div.seller-info-rating>span:nth-child(1)';
         $avgRating = $this->browser->runScript(0, 'get_element_content', ['elementSelector' => $avgRatingsSelector, 'Xpath' => false]);
         $result['average_rating'] = floatval(str_replace(',', '.', $avgRating));
 
-        //sleep(2);
-        //$ratingsSelector = 'a[data-marker="rating-caption/rating"]';
-        //$this->browser->getTab(0)->mouse()->find($ratingsSelector)->click();
+        sleep(2);
+        $ratingsSelector = 'a[data-marker="rating-caption/rating"]';
+        $this->browser->getTab(0)->mouse()->find($ratingsSelector)->click();
+
+        sleep(5);
+        $reviews = $this->browser->runScript(0, 'avito/get_reviews');
+        if ($reviews) {
+            $result['reviews'] = $reviews;
+        }
 
         return $result;
     }
@@ -106,14 +113,21 @@ class VisitAdsCommand extends Command
             $price = $this->getPrice();
             list ($today, $total) = $this->getViews();
             $ratings = $this->getRatings($title);
-            dump('Price: ' . $price);
-            dump('Today views: ' . $today);
-            dump('Total views: ' . $total);
-            dump('Rating: ' . $ratings['average_rating']);
+
+            $filteredReviews = array_filter($ratings['reviews'], function ($review) use ($title) {
+                return trim($review['title']) == trim($title);
+            });
+
+            array_walk($filteredReviews, function (&$review) {
+                unset($review['title']);
+                $review['score'] = intval($review['score']);
+            });
+
             return [
                 'price' => $price,
                 'today_views' => $today,
                 'total_views' => $total,
+                'reviews' => $filteredReviews,
                 'average_rating' => $ratings['average_rating']
             ];
         } 
@@ -138,10 +152,14 @@ class VisitAdsCommand extends Command
        foreach ($ads as $ad) {
             dump($ad->id);
             $adObj = Ad::find($ad->id);
-            $adInfo =$this->getAdInfo($ad->clean_url, $ad->title);
+            $adInfo  = $this->getAdInfo($ad->clean_url, $ad->title);
             if (empty($adInfo)) {
+                Log::channel('daily')->warning('Ad info is empty: '.$ad->id);
+                $adObj->status = 'error';
+                $adObj->save();
                 continue;
             }
+            dump($adInfo);
             $adObj->update([
                 'status' => 'visited',
                 'title' => $ad->title,
@@ -159,6 +177,15 @@ class VisitAdsCommand extends Command
             ]);
             $viewsObj->save();
 
+            foreach ($adInfo['reviews'] as $review) {
+                $reviewObj = AdReview::create([
+                    'ad_id' => $adObj->id,
+                    'rating' => $review['score'],
+                    'created_at' => now()
+                ]);
+
+                $reviewObj->save();
+            }
        }
     }
 }

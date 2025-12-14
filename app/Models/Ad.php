@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illumiinate\Database\Eloquent\Relations\HasMany;
 use Illumiinate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\AdView;
+use App\Models\AdReview;
 use App\Models\SearchQuery;
 
 class Ad extends Model
@@ -35,6 +36,11 @@ class Ad extends Model
     public function views() 
     {
         return $this->hasMany(AdView::class);
+    }
+
+    public function reviews() 
+    {
+        return $this->hasMany(AdReview::class);
     }
 
     public function searchQuery() 

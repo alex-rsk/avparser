@@ -183,8 +183,8 @@ class HeadlessBrowserWrapper
             }
         }
         if (!empty($profileDir)) {
-            $socketFile = trim($config['browser_bin'].DIRECTORY_SEPARATOR.'userData'.DIRECTORY_SEPARATOR.$profileDir)
-                .DIRECTORY_SEPARATOR.'socket';
+            dump($profileDir);
+            $socketFile = $profileDir.DIRECTORY_SEPARATOR.'socket';
             if (file_exists($socketFile))
             {
                 unlink($socketFile);
@@ -224,7 +224,8 @@ class HeadlessBrowserWrapper
         
         $this->prepareEnvironment($params);
         $options = $this->prepareFlags($params);
-        $socketExists =  file_exists($this->socketFile);
+        $socketExists = file_exists($this->socketFile);
+        dump($this->socketFile);
         $browser = false;
         if ($socketExists) {
             Log::channel('browser')->debug('Файл сокета существует, ID потока: '.$params['thread_id']);
@@ -235,27 +236,30 @@ class HeadlessBrowserWrapper
             } catch (\HeadlessChromium\Exception\BrowserConnectionFailed $e) {
                 Log::channel('browser')->warning('Ошибка подключения. ID потока: '.$params['thread_id'].' Сообщение:' .$e->getMessage());
                 self::checkHangingProcess($params['thread_id'], $params['user_data_dir']);
-                @unlink($this->socketFile);
             }
         }
-        try {
-            if (!$browser) {                
-                $factory           = new BrowserFactory($config['browser_bin']);
-                $browser           = $factory->createBrowser($options);
+        else {
+            dump('Файл сокета не существует, создаем браузер');
+            try {
+                if (!$browser) {                
+                    $factory           = new BrowserFactory($config['browser_bin']);
+                    $browser           = $factory->createBrowser($options);
 
-                //$this->process     = $factory->getBrowserProcess();
-                file_put_contents($this->socketFile, $browser->getSocketUri());
-                //$this->commandLine = $browser->getCommandLine();
-                $this->created = true;
+                    //$this->process     = $factory->getBrowserProcess();
+                    file_put_contents($this->socketFile, $browser->getSocketUri());
+                    //$this->commandLine = $browser->getCommandLine();
+                    $this->created = true;
+                }
+            } catch (\Exception $ex) {
+                $errorMessage = 'Ошибка запуска браузера: ' . $ex->getMessage();
+                // dump($ex->getTraceAsString());
+                if (!empty($params['thread_id']))
+                {
+                    self::checkHangingProcess($params['thread_id'], $params['user_data_dir']);
+                }
+                throw new BrowserFailedException($errorMessage, $ex->getCode(), 
+                    $this->process, $ex);
             }
-        } catch (\Exception $ex) {
-            $errorMessage = 'Ошибка запуска браузера: ' . $ex->getMessage();
-            if (!empty($params['thread_id']))
-            {
-                self::checkHangingProcess($params['thread_id'], $params['user_data_dir']);
-            }
-            throw new BrowserFailedException($errorMessage, $ex->getCode(), 
-                $this->process, $ex);
         }
 
         $this->browser = $browser;
@@ -392,8 +396,9 @@ class HeadlessBrowserWrapper
                     $config['first_load_timeout_ms'], $cookies, $clearCookies, $clearCache);
             }
             else {
-                $this->currentTab = $this->attachTab(0, $params['url'],
-                    $onLoadEvent,  $config['load_timeout_ms']);
+                $cookies = [];
+                //$this->currentTab = $this->attachTab(0, $params['url'], $onLoadEvent,  $config['load_timeout_ms']);
+                $this->currentTab = $this->openTab($params['url'], $onLoadEvent, $config['first_load_timeout_ms'], $cookies );
             }
 
             $this->stopRequestIntercept();
@@ -984,7 +989,10 @@ class HeadlessBrowserWrapper
             {
                 $this->stopRequestIntercept();
             }
+        } else {
+            @unlink($this->socketFile);
         }
+         
     }
 }
 
