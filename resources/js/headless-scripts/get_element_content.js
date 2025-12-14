@@ -2,7 +2,7 @@
     let element = null;
     if (!xPath)
     {
-        let elements = document.querySelectorAll(elementSelector);
+        let elements = document.querySelectorAll(elementSelector);        
         element = elements[elements.length-1];
     }
     else {
