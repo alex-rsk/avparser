@@ -320,7 +320,7 @@ class HeadlessBrowserWrapper
             '--disable-features=TranslateUI, InfiniteSessionRestore',
             '--disable-restore-session-state',
             '--noerrdialogs',
-            //   '--blink-settings=imagesEnabled=false', //отключение картинок
+            //'--blink-settings=imagesEnabled=false', //отключение картинок
             '--window-size='.$config['viewport'],
         ];
         if (isset($params['disable_notifications'])) {
@@ -363,9 +363,9 @@ class HeadlessBrowserWrapper
      * @throws \Components\GHC\BrowserFailedException
      */
     protected function afterCreation($params) {
-        if (!empty($params['preloadScript']))
+        if (!empty($params['preload_script']))
         {
-            $this->preloadScript($params['preloadScript']);
+            $this->preloadScript($params['preload_script']);
         }
 
         $config = config('headless-chrome');
@@ -376,7 +376,7 @@ class HeadlessBrowserWrapper
             && !empty($params['onload_event']) ?
                 self::ONLOAD_EVENTS[$params['onload_event']] : self::ONLOAD_EVENTS['page'];
             $this->startAuthIntercept();
-            //if ($this->created) {
+            if ($this->created) {
                 $cookies = [];
                 if (isset($params['cookies']))
                 {
@@ -390,12 +390,12 @@ class HeadlessBrowserWrapper
 
                 $this->currentTab = $this->openTab($params['url'], $onLoadEvent,
                     $config['first_load_timeout_ms'], $cookies, $clearCookies, $clearCache);
-            /*}
+            }
             else {
                 $this->currentTab = $this->attachTab(0, $params['url'],
                     $onLoadEvent,  $config['load_timeout_ms']);
             }
-            */
+
             $this->stopRequestIntercept();
             if (!empty($supressFilter))
             {
@@ -427,7 +427,7 @@ class HeadlessBrowserWrapper
     {
 
         $config = config('headless-chrome');
-        dump($config);
+        //dump($config);
         $this->status = 'busy';
         $page         = $this->browser->createPage();
         $viewPort = explode(',', $config['viewport']);
@@ -577,10 +577,10 @@ class HeadlessBrowserWrapper
     public function runScript($number = 0, $script, $params = [], 
         $timeout = 5, $waitForReload = false)
     {
+        Log::channel('browser')->debug('Запуск скрипта '.$script);
         $number = $number ?? $this->currentTab;
         $scriptSource = $this->scriptLoader->load($script, $params);
-        echo $scriptSource;
-        echo PHP_EOL;
+
         if (empty($scriptSource))
         {
             throw new \Exception('Скрипт '.$script.' не найден');
