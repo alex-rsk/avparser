@@ -1,0 +1,302 @@
+2026-01-18_22-36-34✓ Match found at position (218, 103)
+2026-01-18_22-36-34  Bounding box: (218, 103) to (298, 183)
+2026-01-18_22-36-52✓ Match found at position (218, 103)
+2026-01-18_22-36-52  Bounding box: (218, 103) to (298, 183)
+2026-01-18_22-37-39✓ Match found at position (218, 103)
+2026-01-18_22-37-39  Bounding box: (218, 103) to (298, 183)
+2026-01-18_22-37-53✓ Match found at position (218, 103)
+2026-01-18_22-37-53  Bounding box: (218, 103) to (298, 183)
+2026-01-18_22-38-20✓ Match found at position (218, 103)
+2026-01-18_22-38-20  Bounding box: (218, 103) to (298, 183)
+2026-01-18_22-38-35✓ Match found at position (218, 103)
+2026-01-18_22-38-35  Bounding box: (218, 103) to (298, 183)
+2026-01-18_23-25-58Best match confidence: 0.3097
+2026-01-18_23-25-58✓ Match found at position (218, 103)
+2026-01-18_23-25-58  Bounding box: (218, 103) to (298, 183)
+2026-01-18_23-26-43Best match confidence: 0.3097
+2026-01-18_23-26-43✓ Match found at position (218, 103)
+2026-01-18_23-26-43  Bounding box: (218, 103) to (298, 183)
+2026-01-18_23-27-07Searching for: assets/IM_SMALL.png
+2026-01-18_23-27-07In image: assets/IM_LARGE.png
+2026-01-18_23-27-07Threshold: 0.3
+2026-01-18_23-27-07Best match confidence: 0.3097
+2026-01-18_23-27-07✓ Match found at position (218, 103)
+2026-01-18_23-27-07  Bounding box: (218, 103) to (298, 183)
+2026-01-18_23-29-13Searching for: assets/IM_SMALL.png
+2026-01-18_23-29-13In image: assets/IM_LARGE.png
+2026-01-18_23-29-13Threshold: 0.3
+2026-01-18_23-29-13Best match confidence: 0.6327
+2026-01-18_23-29-13✓ Match found at position (123, 93)
+2026-01-18_23-29-13  Bounding box: (123, 93) to (203, 173)
+2026-01-18_23-29-24Searching for: assets/IM_SMALL.png
+2026-01-18_23-29-24In image: assets/IM_LARGE.png
+2026-01-18_23-29-24Threshold: 0.3
+2026-01-18_23-29-24Best match confidence: 0.6327
+2026-01-18_23-29-24✓ Match found at position (123, 93)
+2026-01-18_23-29-24  Bounding box: (123, 93) to (203, 173)
+2026-01-18_23-29-55Searching for: assets/IM_SMALL.png
+2026-01-18_23-29-55In image: assets/IM_LARGE.png
+2026-01-18_23-29-55Threshold: 0.3
+2026-01-18_23-29-55Best match confidence: 0.5657
+2026-01-18_23-29-55✓ Match found at position (189, 50)
+2026-01-18_23-29-55  Bounding box: (189, 50) to (269, 130)
+2026-01-19_00-21-44Searching for: assets/IM_SMALL.png
+2026-01-19_00-21-44In image: assets/IM_LARGE.png
+2026-01-19_00-21-44Threshold: 0.3
+2026-01-19_00-21-44Best match confidence: 0.6026
+2026-01-19_00-21-44✓ Match found at position (198, 90)
+2026-01-19_00-21-44  Bounding box: (198, 90) to (278, 170)
+2026-01-19_00-24-42Searching for: assets/IM_SMALL.png
+2026-01-19_00-24-42In image: assets/IM_LARGE.png
+2026-01-19_00-24-42Threshold: 0.3
+2026-01-19_00-24-42Best match confidence: 0.5275
+2026-01-19_00-24-42✓ Match found at position (51, 118)
+2026-01-19_00-24-42  Bounding box: (51, 118) to (131, 198)
+2026-01-19_00-25-39Searching for: assets/IM_SMALL.png
+2026-01-19_00-25-39In image: assets/IM_LARGE.png
+2026-01-19_00-25-39Threshold: 0.3
+2026-01-19_00-25-39Best match confidence: 0.5618
+2026-01-19_00-25-39✓ Match found at position (220, 39)
+2026-01-19_00-25-39  Bounding box: (220, 39) to (300, 119)
+2026-01-19_00-26-27Searching for: assets/IM_SMALL.png
+2026-01-19_00-26-27In image: assets/IM_LARGE.png
+2026-01-19_00-26-27Threshold: 0.3
+2026-01-19_00-26-27Best match confidence: 0.6123
+2026-01-19_00-26-27✓ Match found at position (119, 84)
+2026-01-19_00-26-27  Bounding box: (119, 84) to (199, 164)
+2026-01-19_00-27-05Searching for: assets/IM_SMALL.png
+2026-01-19_00-27-05In image: assets/IM_LARGE.png
+2026-01-19_00-27-05Threshold: 0.3
+2026-01-19_00-27-05Best match confidence: 0.3350
+2026-01-19_00-27-05✓ Match found at position (195, 89)
+2026-01-19_00-27-05  Bounding box: (195, 89) to (275, 169)
+2026-01-19_00-27-32Searching for: assets/IM_SMALL.png
+2026-01-19_00-27-32In image: assets/IM_LARGE.png
+2026-01-19_00-27-32Threshold: 0.3
+2026-01-19_00-27-32Best match confidence: 0.5168
+2026-01-19_00-27-32✓ Match found at position (52, 119)
+2026-01-19_00-27-32  Bounding box: (52, 119) to (132, 199)
+2026-01-19_00-28-42Searching for: assets/IM_SMALL.png
+2026-01-19_00-28-42In image: assets/IM_LARGE.png
+2026-01-19_00-28-42Threshold: 0.3
+2026-01-19_00-28-42Best match confidence: 0.5275
+2026-01-19_00-28-42✓ Match found at position (51, 118)
+2026-01-19_00-28-42  Bounding box: (51, 118) to (131, 198)
+2026-01-19_00-28-56Searching for: assets/IM_SMALL.png
+2026-01-19_00-28-56In image: assets/IM_LARGE.png
+2026-01-19_00-28-56Threshold: 0.3
+2026-01-19_00-28-56Best match confidence: 0.5275
+2026-01-19_00-28-56✓ Match found at position (51, 118)
+2026-01-19_00-28-56  Bounding box: (51, 118) to (131, 198)
+2026-01-19_00-29-24Searching for: assets/IM_SMALL.png
+2026-01-19_00-29-24In image: assets/IM_LARGE.png
+2026-01-19_00-29-24Threshold: 0.3
+2026-01-19_00-29-24Best match confidence: 0.5168
+2026-01-19_00-29-24✓ Match found at position (52, 119)
+2026-01-19_00-29-24  Bounding box: (52, 119) to (132, 199)
+2026-01-19_00-29-30Searching for: assets/IM_SMALL.png
+2026-01-19_00-29-30In image: assets/IM_LARGE.png
+2026-01-19_00-29-30Threshold: 0.3
+2026-01-19_00-29-30Best match confidence: 0.5168
+2026-01-19_00-29-30✓ Match found at position (52, 119)
+2026-01-19_00-29-30  Bounding box: (52, 119) to (132, 199)
+2026-01-19_01-00-50Searching for: assets/IM_SMALL.png
+2026-01-19_01-00-50In image: assets/IM_LARGE.png
+2026-01-19_01-00-50Threshold: 0.3
+2026-01-19_01-00-50Error: Needle image is larger than haystack image
+2026-01-19_01-00-50Nothing found
+2026-01-19_01-01-03Searching for: assets/IM_SMALL.png
+2026-01-19_01-01-03In image: assets/IM_LARGE.png
+2026-01-19_01-01-03Threshold: 0.3
+2026-01-19_01-01-03Error: Needle image is larger than haystack image
+2026-01-19_01-01-03Nothing found
+2026-01-19_01-02-46Searching for: assets/IM_SMALL.png
+2026-01-19_01-02-46In image: assets/IM_LARGE.png
+2026-01-19_01-02-46Threshold: 0.3
+2026-01-19_01-02-46Best match confidence: 0.4738
+2026-01-19_01-02-46✓ Match found at position (212, 0)
+2026-01-19_01-02-46  Bounding box: (212, 0) to (292, 80)
+2026-01-19_01-06-01Searching for: assets/IM_SMALL.png
+2026-01-19_01-06-01In image: assets/IM_LARGE.png
+2026-01-19_01-06-01Threshold: 0.3
+2026-01-19_01-06-01Best match confidence: 0.5850
+2026-01-19_01-06-01✓ Match found at position (122, 0)
+2026-01-19_01-06-01  Bounding box: (122, 0) to (202, 80)
+2026-01-19_01-06-35Searching for: assets/IM_SMALL.png
+2026-01-19_01-06-35In image: assets/IM_LARGE.png
+2026-01-19_01-06-35Threshold: 0.3
+2026-01-19_01-06-35Best match confidence: 0.5850
+2026-01-19_01-06-35✓ Match found at position (122, 0)
+2026-01-19_01-06-35  Bounding box: (122, 0) to (202, 80)
+2026-01-19_01-06-43Searching for: assets/IM_SMALL.png
+2026-01-19_01-06-43In image: assets/IM_LARGE.png
+2026-01-19_01-06-43Threshold: 0.3
+2026-01-19_01-06-43Best match confidence: 0.5850
+2026-01-19_01-06-43✓ Match found at position (122, 0)
+2026-01-19_01-06-43  Bounding box: (122, 0) to (202, 80)
+2026-01-19_01-06-43 Left coord: 122
+2026-01-19_01-15-03Searching for: assets/IM_SMALL.png
+2026-01-19_01-15-03In image: assets/IM_LARGE.png
+2026-01-19_01-15-03Threshold: 0.3
+2026-01-19_01-15-03Best match confidence: 0.2217
+2026-01-19_01-15-03 No match found (threshold: 0.3)
+2026-01-19_01-15-03  Try lowering threshold (current best: 0.2217)
+2026-01-19_01-15-03Nothing found
+2026-01-19_01-18-57Searching for: assets/IM_SMALL.png
+2026-01-19_01-18-57In image: assets/IM_LARGE.png
+2026-01-19_01-18-57Threshold: 0.3
+2026-01-19_01-18-57Best match confidence: 0.2520
+2026-01-19_01-18-57 No match found (threshold: 0.3)
+2026-01-19_01-18-57  Try lowering threshold (current best: 0.2520)
+2026-01-19_01-18-57Nothing found
+2026-01-19_01-19-15Searching for: assets/IM_SMALL.png
+2026-01-19_01-19-15In image: assets/IM_LARGE.png
+2026-01-19_01-19-15Threshold: 0.25
+2026-01-19_01-19-15Best match confidence: 0.2520
+2026-01-19_01-19-15✓ Match found at position (215, 0)
+2026-01-19_01-19-15  Bounding box: (215, 0) to (295, 80)
+2026-01-19_01-19-15 Left coord: 215
+2026-01-19_01-19-46Error: Small image not found: input/gt7_small.png
+2026-01-19_01-19-46Error: Big image not found: input/gt7.png
+2026-01-19_01-20-10Searching for: assets/IM_SMALL.png
+2026-01-19_01-20-10In image: assets/IM_LARGE.png
+2026-01-19_01-20-10Threshold: 0.25
+2026-01-19_01-20-10Best match confidence: 0.7232
+2026-01-19_01-20-10✓ Match found at position (121, 0)
+2026-01-19_01-20-10  Bounding box: (121, 0) to (201, 80)
+2026-01-19_01-20-10 Left coord: 121
+2026-01-19_01-20-22Searching for: assets/IM_SMALL.png
+2026-01-19_01-20-22In image: assets/IM_LARGE.png
+2026-01-19_01-20-22Threshold: 0.25
+2026-01-19_01-20-22Best match confidence: 0.1375
+2026-01-19_01-20-22 No match found (threshold: 0.25)
+2026-01-19_01-20-22  Try lowering threshold (current best: 0.1375)
+2026-01-19_01-20-22Nothing found
+2026-01-19_01-20-35Searching for: assets/IM_SMALL.png
+2026-01-19_01-20-35In image: assets/IM_LARGE.png
+2026-01-19_01-20-35Threshold: 0.13
+2026-01-19_01-20-35Best match confidence: 0.1375
+2026-01-19_01-20-35✓ Match found at position (8, 0)
+2026-01-19_01-20-35  Bounding box: (8, 0) to (88, 80)
+2026-01-19_01-20-35 Left coord: 8
+2026-01-19_01-21-07Searching for: assets/IM_SMALL.png
+2026-01-19_01-21-07In image: assets/IM_LARGE.png
+2026-01-19_01-21-07Threshold: 0.15
+2026-01-19_01-21-07Best match confidence: 0.4410
+2026-01-19_01-21-07✓ Match found at position (194, 0)
+2026-01-19_01-21-07  Bounding box: (194, 0) to (274, 80)
+2026-01-19_01-21-07 Left coord: 194
+2026-01-19_01-21-23Searching for: assets/IM_SMALL.png
+2026-01-19_01-21-23In image: assets/IM_LARGE.png
+2026-01-19_01-21-23Threshold: 0.15
+2026-01-19_01-21-23Best match confidence: 0.4456
+2026-01-19_01-21-23✓ Match found at position (195, 0)
+2026-01-19_01-21-23  Bounding box: (195, 0) to (275, 80)
+2026-01-19_01-21-23 Left coord: 195
+2026-01-19_01-22-19Searching for: assets/IM_SMALL.png
+2026-01-19_01-22-19In image: assets/IM_LARGE.png
+2026-01-19_01-22-19Threshold: 0.15
+2026-01-19_01-22-19Best match confidence: 0.4903
+2026-01-19_01-22-19✓ Match found at position (212, 0)
+2026-01-19_01-22-19  Bounding box: (212, 0) to (292, 80)
+2026-01-19_01-22-19 Left coord: 212
+2026-01-19_01-22-40Error: Small image not found: input/gt7_small.png
+2026-01-19_01-22-40Error: Big image not found: input/gt7.png
+2026-01-19_01-23-36Searching for: assets/IM_SMALL.png
+2026-01-19_01-23-36In image: assets/IM_LARGE.png
+2026-01-19_01-23-36Threshold: 0.15
+2026-01-19_01-23-36Best match confidence: 0.2520
+2026-01-19_01-23-36✓ Match found at position (215, 0)
+2026-01-19_01-23-36  Bounding box: (215, 0) to (295, 80)
+2026-01-19_01-23-36 Left coord: 215
+2026-01-19_01-24-10Searching for: assets/IM_SMALL.png
+2026-01-19_01-24-10In image: assets/IM_LARGE.png
+2026-01-19_01-24-10Threshold: 0.15
+2026-01-19_01-24-10Best match confidence: 0.1382
+2026-01-19_01-24-10 No match found (threshold: 0.15)
+2026-01-19_01-24-10  Try lowering threshold (current best: 0.1382)
+2026-01-19_01-24-10Nothing found
+2026-01-19_01-25-33Searching for: assets/IM_SMALL.png
+2026-01-19_01-25-33In image: assets/IM_LARGE.png
+2026-01-19_01-25-33Threshold: 0.15
+2026-01-19_01-25-33Best match confidence: 0.5895
+2026-01-19_01-25-33✓ Match found at position (120, 0)
+2026-01-19_01-25-33  Bounding box: (120, 0) to (200, 80)
+2026-01-19_01-25-33 Left coord: 120
+2026-01-19_01-26-05Searching for: assets/IM_SMALL.png
+2026-01-19_01-26-05In image: assets/IM_LARGE.png
+2026-01-19_01-26-05Threshold: 0.15
+2026-01-19_01-26-05Best match confidence: 0.3533
+2026-01-19_01-26-05✓ Match found at position (210, 0)
+2026-01-19_01-26-05  Bounding box: (210, 0) to (290, 80)
+2026-01-19_01-26-05 Left coord: 210
+2026-01-19_01-26-54Searching for: assets/IM_SMALL.png
+2026-01-19_01-26-54In image: assets/IM_LARGE.png
+2026-01-19_01-26-54Threshold: 0.15
+2026-01-19_01-26-54Best match confidence: 0.3119
+2026-01-19_01-26-54✓ Match found at position (192, 0)
+2026-01-19_01-26-54  Bounding box: (192, 0) to (272, 80)
+2026-01-19_01-26-54 Left coord: 192
+2026-01-19_01-27-35Searching for: assets/IM_SMALL.png
+2026-01-19_01-27-35In image: assets/IM_LARGE.png
+2026-01-19_01-27-35Threshold: 0.15
+2026-01-19_01-27-35Best match confidence: 0.2907
+2026-01-19_01-27-35✓ Match found at position (139, 0)
+2026-01-19_01-27-35  Bounding box: (139, 0) to (219, 80)
+2026-01-19_01-27-35 Left coord: 139
+2026-01-19_01-28-43Searching for: assets/IM_SMALL.png
+2026-01-19_01-28-43In image: assets/IM_LARGE.png
+2026-01-19_01-28-43Threshold: 0.15
+2026-01-19_01-28-43Best match confidence: 0.3727
+2026-01-19_01-28-43✓ Match found at position (160, 0)
+2026-01-19_01-28-43  Bounding box: (160, 0) to (240, 80)
+2026-01-19_01-28-43 Left coord: 160
+2026-01-19_01-29-29Searching for: assets/IM_SMALL.png
+2026-01-19_01-29-29In image: assets/IM_LARGE.png
+2026-01-19_01-29-29Threshold: 0.15
+2026-01-19_01-29-29Best match confidence: 0.2870
+2026-01-19_01-29-29✓ Match found at position (214, 0)
+2026-01-19_01-29-29  Bounding box: (214, 0) to (294, 80)
+2026-01-19_01-29-29 Left coord: 214
+2026-01-19_01-33-21Searching for: assets/IM_SMALL.png
+2026-01-19_01-33-21In image: assets/IM_LARGE.png
+2026-01-19_01-33-21Threshold: 0.15
+2026-01-19_01-33-21Best match confidence: 0.5635
+2026-01-19_01-33-21✓ Match found at position (120, 0)
+2026-01-19_01-33-21  Bounding box: (120, 0) to (200, 80)
+2026-01-19_01-33-21 Left coord: 120
+2026-01-19_01-33-47Searching for: assets/IM_SMALL.png
+2026-01-19_01-33-47In image: assets/IM_LARGE.png
+2026-01-19_01-33-47Threshold: 0.15
+2026-01-19_01-33-47Best match confidence: 0.3441
+2026-01-19_01-33-47✓ Match found at position (195, 0)
+2026-01-19_01-33-47  Bounding box: (195, 0) to (275, 80)
+2026-01-19_01-33-47 Left coord: 195
+2026-01-19_01-34-05Searching for: assets/IM_SMALL.png
+2026-01-19_01-34-05In image: assets/IM_LARGE.png
+2026-01-19_01-34-05Threshold: 0.15
+2026-01-19_01-34-05Best match confidence: 0.1862
+2026-01-19_01-34-05✓ Match found at position (173, 0)
+2026-01-19_01-34-05  Bounding box: (173, 0) to (253, 80)
+2026-01-19_01-34-05 Left coord: 173
+2026-01-19_01-34-36Searching for: assets/IM_SMALL.png
+2026-01-19_01-34-36In image: assets/IM_LARGE.png
+2026-01-19_01-34-36Threshold: 0.15
+2026-01-19_01-34-36Best match confidence: 0.3727
+2026-01-19_01-34-36✓ Match found at position (160, 0)
+2026-01-19_01-34-36  Bounding box: (160, 0) to (240, 80)
+2026-01-19_01-34-36 Left coord: 160
+2026-01-19_01-35-26Searching for: assets/IM_SMALL.png
+2026-01-19_01-35-26In image: assets/IM_LARGE.png
+2026-01-19_01-35-26Threshold: 0.15
+2026-01-19_01-35-26Best match confidence: 0.4973
+2026-01-19_01-35-26✓ Match found at position (189, 0)
+2026-01-19_01-35-26  Bounding box: (189, 0) to (269, 80)
+2026-01-19_01-35-26 Left coord: 189
+2026-01-19_01-36-05Searching for: assets/IM_SMALL.png
+2026-01-19_01-36-05In image: assets/IM_LARGE.png
+2026-01-19_01-36-05Threshold: 0.15
+2026-01-19_01-36-05Best match confidence: 0.4659
+2026-01-19_01-36-05✓ Match found at position (214, 0)
+2026-01-19_01-36-05  Bounding box: (214, 0) to (294, 80)
+2026-01-19_01-36-05 Left coord: 214

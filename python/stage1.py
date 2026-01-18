@@ -2,89 +2,31 @@
 import subprocess
 import sys
 import os
+import datetime
 from pathlib import Path
 
-
+def logging(message):    
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+    log_file = os.path.join(logs_dir, "log.txt")
+    try:
+        dt = datetime.datetime.now()        
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(dt.strftime('%Y-%m-%d_%H-%M-%S') + message + '\n')
+    except IOError as e:
+        print(f"An error occurred while writing to the file: {e}")
 
 def process_small_image(path, threshold):
 
-    # Check if input file exists
-    if not os.path.exists(path):
-        print(f"Error: Small image not found: {path}")
-        return False
-
-    print(f"Processing small image...")
     try:
-        cmd_small = [
-            "convert",
-            path,
-            "-threshold",
-            str(threshold),
-            "assets/IM_SMALL.png"
-        ]
-        subprocess.run(cmd_small, check=True)
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Error: {e}")
-        return False
+        if not os.path.exists(path):
+            logging(f"Error: Small image not found: {path}")
+            return False
 
-
-def process_images(small_image, large_image):
-    """
-    Process images with ImageMagick threshold operations.
-    
-    Args:
-        small_image: Path to small image (will be thresholded, filled, and negated)
-        large_image: Path to large image (will be thresholded)
-    """
-    # Create assets directory if it doesn't exist
-    assets_dir = Path("assets")
-    assets_dir.mkdir(exist_ok=True)
-    
-    # Define output paths
-    im_small = assets_dir / "IM_SMALL.png"
-    im_large = assets_dir / "IM_LARGE.png"
-    
-    print(f"Processing images...")
-    print(f"  Small image: {small_image}")
-    print(f"  Large image: {large_image}")
-    print(f"  Output directory: {assets_dir}")
-    print()
-    
-    # Check if input files exist
-    if not os.path.exists(small_image):
-        print(f"Error: Small image not found: {small_image}")
-        return False
-    
-    if not os.path.exists(large_image):
-        print(f"Error: Large image not found: {large_image}")
-        return False
-    
-    # Process large image: threshold 45%
-    print(f"Processing large image...")
-    try:
-        cmd_large = [
-            "convert",
-            large_image,
-            "-threshold", "55%",
-            str(im_large)
-        ]
-        result = subprocess.run(cmd_large, check=True, capture_output=True, text=True)
-        print(f"  ✓ Saved: {im_large}")
-    except subprocess.CalledProcessError as e:
-        print(f"  ✗ Error processing large image:")
-        print(f"    {e.stderr}")
-        return False
-    except FileNotFoundError:
-        print("  ✗ Error: ImageMagick 'convert' command not found")
-        print("    Please install ImageMagick: sudo apt install imagemagick")
-        return False
-    
-    # Process small image: threshold 45%, fill contours, and negate
-    print(f"Processing small image...")
-    try:
+        im_small = assets_dir / "IM_SMALL.png"
         # Create a temporary file for intermediate processing
         temp_file = assets_dir / "temp_small.png"
+
         
         # Step 1: Threshold
         cmd_threshold = [
@@ -122,28 +64,61 @@ def process_images(small_image, large_image):
             str(im_small)
         ]
         subprocess.run(cmd_negate, check=True, capture_output=True, text=True)
-        
-        print(f"  ✓ Saved: {im_small}")
     except subprocess.CalledProcessError as e:
-        print(f"  ✗ Error processing small image:")
-        print(f"    {e.stderr}")
+        logging(f" Error processing small image:")
+        logging(f"    {e.stderr}")
         # Clean up temp file if it exists
         if temp_file.exists():
             temp_file.unlink()
         return False
-    
-    print()
-    print("✓ Processing complete!")
-    print(f"  Output files in: {assets_dir}/")
-    print(f"    - IM_SMALL.png (thresholded, filled, negated)")
-    print(f"    - IM_LARGE.png (thresholded)")
-    
-    return True
+
+
+def process_big_image(path, threshold, puzzle_top_coord, puzzle_height):
+
+    if not os.path.exists(path):
+        logging(f"Error: Big image not found: {path}")
+        return False
+
+    temp_file = assets_dir / "temp_big.png"    
+
+    im_large = assets_dir / "IM_LARGE.png"
+    # Check if input file exists
+    if not os.path.exists(path):
+        logging(f"Error: Large image not found: {path}")
+        return False
+
+    try:
+        cmd = [
+            "convert",
+            path,
+            "-crop", "0x" + str(puzzle_height) + "+0+" + str(puzzle_top_coord),
+            str(temp_file)
+        ]
+        
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"    {e.stderr}")
+        return False
+
+    try:
+        cmd = [
+            "convert",
+            temp_file,
+            "-threshold",
+            str(threshold),
+            im_large
+        ]
+
+        subprocess.run(cmd, check=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"    {e.stderr}")
+        return False
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python script.py <small_image> <large_image> <threshold_small> <threshold_large>")
+        print("Usage: python script.py <small_image> <large_image> <threshold_small> <threshold_large> <puzzle_top_coord> <puzzle_height>")
         print()
         print("Process images with ImageMagick:")
         print("  - Large image: threshold  → assets/IM_LARGE.png")
@@ -162,19 +137,37 @@ if __name__ == "__main__":
     
     small_image = sys.argv[1]
     large_image = sys.argv[2]
-    threshold_sm =  sys.argv[3]
-    if len(sys.argv) < 4 or sys.argv[3] == "":
-        threshold_sm = "25"
-    else:
-        threshold_sm = sys.argv[3]
-
-    threshold_lg =  sys.argv[4]
-    if len(sys.argv) < 5 or sys.argv[4] == "":
-        threshold_lg = "55"
-    else:
-        threshold_lg = sys.argv[3]
-        
-    print(f"Processing images with threshold_small={threshold_sm}, threshold_large={threshold_lg}")    
-    //success = process_images(small_image, large_image)
     
-    sys.exit(0 if success else 1)
+    if len(sys.argv) < 4 or sys.argv[3] == "":
+        threshold_sm = "25%"
+    else:
+        threshold_sm =  sys.argv[3] + "%"        
+    
+    if len(sys.argv) < 5 or sys.argv[4] == "":
+        threshold_lg = "47%"
+    else:
+        threshold_lg =  sys.argv[4] + "%"        
+
+    if len(sys.argv) < 6 or sys.argv[5] == "":
+        puzzle_top_coord = 0
+    else:
+        puzzle_top_coord = int(sys.argv[5])
+
+    if len(sys.argv) < 6 or sys.argv[5] == "":
+        puzzle_top_coord = 0
+    else:
+        puzzle_top_coord = int(sys.argv[5])
+
+    if len(sys.argv) < 7 or sys.argv[6] == "":
+        puzzle_height = 80
+    else:
+        puzzle_height = int(sys.argv[6])    
+        
+    #print(f"Processing images with threshold_small={threshold_sm}, threshold_large={threshold_lg}")    
+    
+    assets_dir = Path("assets")
+    assets_dir.mkdir(exist_ok=True)
+    process_small_image(small_image, threshold_sm)
+    process_big_image(large_image, threshold_lg, puzzle_top_coord, puzzle_height)
+        
+    sys.exit(0)
