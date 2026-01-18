@@ -26,7 +26,7 @@ return new class extends Migration
             $table->string('clean_url', 2048);
             $table->dateTime('created_at');
             $table->dateTime('updated_at')->nullable();
-            $table->dateTime('last_visited_at')->nullable();
+            $table->dateTime('last_visited_at')->nullable();            
 
             $table->foreign('search_query_id')
                   ->references('id')

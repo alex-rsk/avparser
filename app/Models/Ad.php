@@ -3,6 +3,8 @@
 namespace App\Models;
 
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
 use Illumiinate\Database\Eloquent\Relations\HasMany;
 use Illumiinate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +32,17 @@ class Ad extends Model
                 'created_at'      => date('Y-m-d H:i:s')
             ];
         }
+
+        $avitoIds = array_column($prepared, 'avito_id');
+        $existingIds = self::query()->select('avito_id')->whereIn('avito_id', $avitoIds)
+            ->get()->pluck('avito_id');
+
+        $prepared = array_filter($prepared, function ($item) use ($existingIds) {
+            return !in_array($item['avito_id'], $existingIds->toArray());
+        });
+
+        Log::channel('daily')->debug('New ads: '.count($prepared));
+
         return $prepared;
     }
 

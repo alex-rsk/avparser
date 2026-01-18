@@ -750,18 +750,23 @@ class HeadlessBrowserWrapper
      * 
      * @param $supressRequestsFilter  фильтр URL запросов, которые будут отклонены для загрузки
      */
-    public function startRequestIntercept($supressRequestsFilter)
+    public function startRequestIntercept($requestsFilter, ?callable $callback = null)
     {
         $connection    = $this->browser->getConnection();
         $connection->removeAllListeners('method:Fetch.requestPaused');
-        $messageEnable = new Message('Fetch.enable', ['patterns' => $supressRequestsFilter ]);
+        $messageEnable = new Message('Fetch.enable', ['patterns' => $requestsFilter ]);
         $connection->sendMessageSync($messageEnable);
+
         $connection->on('method:Fetch.requestPaused', function($request)
-            use (&$connection) {
-                $messageFail = new Message('Fetch.failRequest', 
-                    ['requestId' => $request['requestId'], 'errorReason' => 'TimedOut']);
-                $connection->sendMessage($messageFail);
-        });
+            use (&$connection, $callback) {
+                if ($callback) {
+                    $callback($request);
+                    $messageFail = new Message('Fetch.continueRequest', 
+                    ['requestId' => $request['requestId']]);
+                    $connection->sendMessage($messageFail);
+                }
+            });
+                
     }
 
     /**

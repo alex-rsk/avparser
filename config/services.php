@@ -34,5 +34,7 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-
+    'rucaptcha' => [
+        'api_key' => 'f400f965196412be1556670176d934aa',
+    ]
 ];

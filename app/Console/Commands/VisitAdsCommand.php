@@ -62,9 +62,15 @@ class VisitAdsCommand extends Command
 
         $this->browser = HeadlessBrowserWrapper::factory($params);
         $this->browser->navigateTab(0, 'https://avito.ru/');
+        //$this->browser->startRequestIntercept();
         sleep(random_int(1, 3));
     }
     
+    private function check404() : bool
+    {
+        $is404 = $this->browser->runScript(0, 'avito/check_404');
+        return intval($is404) > 0;
+    }
 
     private function getPrice() : ?float
     {
@@ -87,19 +93,57 @@ class VisitAdsCommand extends Command
     private function getRatings(string $title) : array
     {
         $result = ['average_rating' => 0, 'reviews' => []];
+
         $avgRatingsSelector = 'div.seller-info-rating>span:nth-child(1)';
         $avgRating = $this->browser->runScript(0, 'get_element_content', ['elementSelector' => $avgRatingsSelector, 'Xpath' => false]);
         $result['average_rating'] = floatval(str_replace(',', '.', $avgRating));
 
         sleep(2);
         $ratingsSelector = 'a[data-marker="rating-caption/rating"]';
-        $this->browser->getTab(0)->mouse()->find($ratingsSelector)->click();
+        $this->browser->getTab(0)->mouse()->find($ratingsSelector)->click();        
 
-        sleep(5);
+        $reviewsModalSelector = 'div[role="dialog"]';
+        sleep(3); //@TODO заменить на waitForelement
+
+        $totalReviews = intval($this->browser->runScript(0, 'get_element_content', [
+            'elementSelector' => 'a[data-marker="rating-caption/rating"]',
+             'Xpath' => false
+        ]));
+
+        dump('Total reviews:'.$totalReviews);
+
+        list($modalX, $modalY) = $this->browser->runScript(0, 'get_element_coords', [
+            'elementSelector' => $reviewsModalSelector,
+            'Xpath' => false
+        ]);
+        dump($modalX, $modalY);
+
+        if ($totalReviews > 25) {
+            $this->browser->getTab(0)
+                ->mouse()
+                ->move(500, 300 )->scrollDown(100);
+                //->move($modalX+random_int(35, 60), $modalY+random_int(35, 60), ['steps' => random_int(20,30)])->click();
+
+            $count = ceil($totalReviews/25);
+
+            if ($count == 0) {
+                $count = 1;
+            }
+
+            for ($i = 0; $i < $count; $i++) {
+                dump('Sweep '.$sweep);
+                $this->browser->getTab(0)->mouse()->scrollDown(200);
+                sleep(random_int(1,2));
+            }
+        }
+
         $reviews = $this->browser->runScript(0, 'avito/get_reviews');
         if ($reviews) {
             $result['reviews'] = $reviews;
-        }
+        }        
+
+        $result['average_rating'] = floatval(str_replace(',', '.', $avgRating));
+
 
         return $result;
     }
@@ -110,6 +154,9 @@ class VisitAdsCommand extends Command
             $url = 'https://avito.ru'.$adUrl;
             $this->browser->navigateTab(0, $url);
             sleep(3);
+            if ($this->check404()) {
+                return null;
+            }
             $price = $this->getPrice();
             list ($today, $total) = $this->getViews();
             $ratings = $this->getRatings($title);
@@ -145,15 +192,19 @@ class VisitAdsCommand extends Command
     {       
        $sqId = $this->argument('qid');
        $ads = Ad::query()->select(['id', 'url', 'clean_url', 'title'])
-        ->where('search_query_id', $sqId)->orderByRaw('last_visited_at ASC, RAND()')->limit(1)->get();
+            ->whereNotIn('status', ['error', 'visited'])->where('search_query_id', $sqId)
+            ->orderByRaw('RAND()')
+            ->limit(1)->get();
+
        //dump($ads->toArray());
        
        $this->initBrowser();
+
        foreach ($ads as $ad) {
             dump($ad->id);
             $adObj = Ad::find($ad->id);
             $adInfo  = $this->getAdInfo($ad->clean_url, $ad->title);
-            if (empty($adInfo)) {
+            if (is_null($adInfo)) {
                 Log::channel('daily')->warning('Ad info is empty: '.$ad->id);
                 $adObj->status = 'error';
                 $adObj->save();

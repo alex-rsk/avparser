@@ -4,8 +4,81 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "deb45d01980bc37526711ac16321d91b",
+    "content-hash": "45b576ce078067db3b55846ea9f2b25e",
     "packages": [
+        {
+            "name": "2captcha/2captcha",
+            "version": "v1.2.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/2captcha/2captcha-php.git",
+                "reference": "75dbb12449c0247fa396f7056453bc42002580c5"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/2captcha/2captcha-php/zipball/75dbb12449c0247fa396f7056453bc42002580c5",
+                "reference": "75dbb12449c0247fa396f7056453bc42002580c5",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "ext-fileinfo": "*",
+                "ext-mbstring": "*",
+                "php": ">=7.3"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "9.6.*"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "TwoCaptcha\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "2captcha",
+                    "email": "info@2captcha.com",
+                    "homepage": "https://2captcha.com/"
+                }
+            ],
+            "description": "PHP package for easy integration with 2captcha API",
+            "keywords": [
+                "2captcha",
+                "2captcha.com",
+                "Cutcaptcha",
+                "MTCaptcha",
+                "amazon waf",
+                "anticaptcha",
+                "atbCAPTCHA",
+                "audio captcha",
+                "bypass captcha",
+                "captcha",
+                "captcha solver",
+                "cloudflare turnstile",
+                "datadome",
+                "decaptcha",
+                "friendly captcha",
+                "funcaptcha",
+                "geetest",
+                "keycaptcha",
+                "lemin",
+                "reCAPTCHA V2",
+                "recaptcha",
+                "recaptcha v3",
+                "solve captcha",
+                "tencent"
+            ],
+            "support": {
+                "issues": "https://github.com/2captcha/2captcha-php/issues",
+                "source": "https://github.com/2captcha/2captcha-php/tree/v1.2.2"
+            },
+            "time": "2025-12-17T15:26:14+00:00"
+        },
         {
             "name": "bacon/bacon-qr-code",
             "version": "v3.0.3",
