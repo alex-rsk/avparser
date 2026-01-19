@@ -23,10 +23,8 @@ def process_small_image(path, threshold):
             logging(f"Error: Small image not found: {path}")
             return False
 
-        im_small = assets_dir / "IM_SMALL.png"
-        # Create a temporary file for intermediate processing
+        im_small = assets_dir / "IM_SMALL.png"        
         temp_file = assets_dir / "temp_small.png"
-
         
         # Step 1: Threshold
         cmd_threshold = [
@@ -36,9 +34,7 @@ def process_small_image(path, threshold):
             str(temp_file)
         ]
         subprocess.run(cmd_threshold, check=True, capture_output=True, text=True)
-        
-        # Step 2: Fill contours using morphology close operation and floodfill
-        # This approach fills holes inside the contours
+
         cmd_fill = [
             "convert",
             str(temp_file),
@@ -82,7 +78,7 @@ def process_big_image(path, threshold, puzzle_top_coord, puzzle_height):
     temp_file = assets_dir / "temp_big.png"    
 
     im_large = assets_dir / "IM_LARGE.png"
-    # Check if input file exists
+
     if not os.path.exists(path):
         logging(f"Error: Large image not found: {path}")
         return False
@@ -162,8 +158,6 @@ if __name__ == "__main__":
         puzzle_height = 80
     else:
         puzzle_height = int(sys.argv[6])    
-        
-    #print(f"Processing images with threshold_small={threshold_sm}, threshold_large={threshold_lg}")    
     
     assets_dir = Path("assets")
     assets_dir.mkdir(exist_ok=True)
