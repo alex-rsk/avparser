@@ -29,7 +29,7 @@ if len(sys.argv) < 3:
 
 small_image = sys.argv[1]
 large_image = sys.argv[2]
-
+''''
 if len(sys.argv) < 4 or sys.argv[3] == "":
     threshold_sm = config['threshold']['small']
 else:
@@ -39,21 +39,17 @@ if len(sys.argv) < 5 or sys.argv[4] == "":
     threshold_sm = config['threshold']['large']
 else:
     threshold_lg =  sys.argv[4] + "%"        
+''''
 
-if len(sys.argv) < 6 or sys.argv[5] == "":
+if len(sys.argv) < 4 or sys.argv[3] == "":
     puzzle_top_coord = 0
 else:
-    puzzle_top_coord = int(sys.argv[5])
+    puzzle_top_coord = int(sys.argv[3])
 
-if len(sys.argv) < 6 or sys.argv[5] == "":
-    puzzle_top_coord = 0
-else:
-    puzzle_top_coord = int(sys.argv[5])
-
-if len(sys.argv) < 7 or sys.argv[6] == "":
+if len(sys.argv) < 5 or sys.argv[4] == "":
     puzzle_height = 80
 else:
-    puzzle_height = int(sys.argv[6])    
+    puzzle_height = int(sys.argv[4])    
 
 assets_dir = Path("assets")
 assets_dir.mkdir(exist_ok=True)
