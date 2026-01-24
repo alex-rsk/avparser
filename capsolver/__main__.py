@@ -5,9 +5,14 @@ from stage1 import logging
 from stage1 import process_small_image
 from stage1 import process_big_image
 from stage2 import find_subimage
+from pathlib import Path
 
 config = configparser.ConfigParser()
-config.read('config.ini');
+
+config.read(os.path.abspath('capsolver/config.ini'));
+
+threshold_sm = config['thresholds']['small_threshold'] + '%'
+threshold_lg = config['thresholds']['large_threshold'] + '%'
 
 if len(sys.argv) < 3:
     print("Usage: python script.py <small_image> <large_image> <threshold_small> <threshold_large> <puzzle_top_coord> <puzzle_height>")
@@ -25,21 +30,10 @@ if len(sys.argv) < 3:
     print("Example:")
     print("  python script.py heart.png screenshot.png")
     print("  python script.py heart.png screenshot.png --alt")
-    sys.exit(1)
+    sys.exit(1)    
 
 small_image = sys.argv[1]
 large_image = sys.argv[2]
-''''
-if len(sys.argv) < 4 or sys.argv[3] == "":
-    threshold_sm = config['threshold']['small']
-else:
-    threshold_sm =  sys.argv[3] + "%"        
-
-if len(sys.argv) < 5 or sys.argv[4] == "":
-    threshold_sm = config['threshold']['large']
-else:
-    threshold_lg =  sys.argv[4] + "%"        
-''''
 
 if len(sys.argv) < 4 or sys.argv[3] == "":
     puzzle_top_coord = 0
@@ -51,8 +45,9 @@ if len(sys.argv) < 5 or sys.argv[4] == "":
 else:
     puzzle_height = int(sys.argv[4])    
 
-assets_dir = Path("assets")
+assets_dir = Path("capsolver/assets")
 assets_dir.mkdir(exist_ok=True)
+
 process_small_image(small_image, threshold_sm)
 process_big_image(large_image, threshold_lg, puzzle_top_coord, puzzle_height)
 

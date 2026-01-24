@@ -23,13 +23,14 @@ def process_small_image(path, threshold):
             logging(f"Error: Small image not found: {path}")
             return False
 
-        im_small = assets_dir / "IM_SMALL.png"        
-        temp_file = assets_dir / "temp_small.png"
-        
+        im_small = path
+        assets_dir = os.path.join(os.path.dirname(os.path.dirname(im_small)), "assets")
+        temp_file = Path(os.path.join(assets_dir,  "temp_small.png"))
+        outfile = Path(os.path.join(assets_dir,  "IM_SMALL.png"))
         # Step 1: Threshold
         cmd_threshold = [
             "convert",
-            small_image,
+            im_small,
             "-threshold", "25%",
             str(temp_file)
         ]
@@ -45,21 +46,23 @@ def process_small_image(path, threshold):
             "-fill", "black",
             "-draw", "color 0,0 floodfill",     # Fill outside with black
             "-negate",                           # Invert back
-            str(im_small)
+            str(outfile)
         ]
+
         subprocess.run(cmd_fill, check=True, capture_output=True, text=True)
-        
-        # Clean up temp file
-        temp_file.unlink()
         
         # Step 3: Negate the result
         cmd_negate = [
             "convert",
-            str(im_small),
+            str(temp_file),
             "-negate",
-            str(im_small)
+            str(outfile)
         ]
+
+        print(cmd_negate)
         subprocess.run(cmd_negate, check=True, capture_output=True, text=True)
+        if temp_file.exists():
+            temp_file.unlink()
     except subprocess.CalledProcessError as e:
         logging(f" Error processing small image:")
         logging(f"    {e.stderr}")
@@ -75,9 +78,13 @@ def process_big_image(path, threshold, puzzle_top_coord, puzzle_height):
         logging(f"Error: Big image not found: {path}")
         return False
 
-    temp_file = assets_dir / "temp_big.png"    
+    assets_dir = os.path.join(os.path.dirname(os.path.dirname(path)), "assets")
 
-    im_large = assets_dir / "IM_LARGE.png"
+    temp_file = Path(os.path.join(assets_dir,  "temp_small.png"))
+
+    im_large = path
+
+    out_file = Path(os.path.join(assets_dir,  "IM_LARGE.png"))
 
     if not os.path.exists(path):
         logging(f"Error: Large image not found: {path}")
@@ -86,14 +93,14 @@ def process_big_image(path, threshold, puzzle_top_coord, puzzle_height):
     try:
         cmd = [
             "convert",
-            path,
+            im_large,
             "-crop", "0x" + str(puzzle_height) + "+0+" + str(puzzle_top_coord),
             str(temp_file)
         ]
         
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as e:
-        print(f"    {e.stderr}")
+        print(f"{e.stderr}")
         return False
 
     try:
@@ -102,9 +109,9 @@ def process_big_image(path, threshold, puzzle_top_coord, puzzle_height):
             temp_file,
             "-threshold",
             str(threshold),
-            im_large
+            out_file
         ]
-
+        print(cmd)
         subprocess.run(cmd, check=True)
         return True
     except subprocess.CalledProcessError as e:
