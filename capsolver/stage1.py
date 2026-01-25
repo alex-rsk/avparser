@@ -59,7 +59,7 @@ def process_small_image(path, threshold):
             str(outfile)
         ]
 
-        print(cmd_negate)
+        # print(cmd_negate)
         subprocess.run(cmd_negate, check=True, capture_output=True, text=True)
         if temp_file.exists():
             temp_file.unlink()
@@ -111,7 +111,7 @@ def process_big_image(path, threshold, puzzle_top_coord, puzzle_height):
             str(threshold),
             out_file
         ]
-        print(cmd)
+        # print(cmd)
         subprocess.run(cmd, check=True)
         return True
     except subprocess.CalledProcessError as e:

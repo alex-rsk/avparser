@@ -31,3 +31,5 @@ storage/profiles/*
 capsolver/assets/*
 capsolver/input/*
 logs
+build
+capsolver/__pycache__

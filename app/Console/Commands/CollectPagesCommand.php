@@ -226,7 +226,7 @@ class CollectPagesCommand extends Command
             throw new \Exception("Geetest elements not found!");                    
         }
 
-        $puzzleRelativeTop = floatval($geeSliceCoords[1])-floatval($geeBgCoords[1]);
+        $puzzleRelativeTop = (int)(ceil(floatval($geeSliceCoords[1])-floatval($geeBgCoords[1])));
         $this->log("Puzzle relative Y: " . $puzzleRelativeTop);
 
         $cssUrlRegexp = '~url\([\"\']([^\)]+)[\"\']\)~';
@@ -262,8 +262,13 @@ class CollectPagesCommand extends Command
     
         $lgDestFilename = base_path('capsolver/input/large.png');
         HelperService::downloadFile($largeUrl, $lgDestFilename);
-        
+                
         $this->log('Captcha background: '. $imageLarge);
+
+        $solverCmd = base_path('dist/capsolver'). ' ' . $smDestFilename . ' ' . $lgDestFilename . ' ' . $puzzleRelativeTop;
+        $this->log($solverCmd);
+        exec($solverCmd, $output);
+        $this->log('X-coordinate :' .$output);
 
     }
 
