@@ -12,10 +12,7 @@
     if (element)
     {
         console.log(element.getBoundingClientRect());
-        return [ 
-            element.getBoundingClientRect().x,
-            element.getBoundingClientRect().y
-        ];
+        return element.style.backgroundImage;
     }
     else {
         return false;

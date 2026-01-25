@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 use HeadlessChromium\Page;
 use App\Models\Ad;
 use App\Models\SearchQuery;
-use TwoCaptcha\TwoCaptcha;
+use App\Services\HelperService;
 
 class CollectPagesCommand extends Command
 {
@@ -27,29 +27,16 @@ class CollectPagesCommand extends Command
      */
     protected $description = 'Collect pages with ads';
 
-    private function solve(string $url, string $pageUrl) {
-        $urlParams = parse_url($url, PHP_URL_QUERY);
-        parse_str($urlParams, $params);
-        $apiKey = config('services.rucaptcha.api_key');
-        $solver = new TwoCaptcha($apiKey);
-        $solverParams  = [
-            'url' => $pageUrl,
-            'challenge' => $params['challenge'],
-            'captchaId' => $params['captcha_id'],
-        ];
-        dump($solverParams);
-        try {
-            //$result = $solver->geetest_v4($solverParams);
 
-            dump($result);
-            //sleep(random_int(2, 4));
-            
-        } catch (\Exception $e) {
-            Log::channel('browser')->error('Error solving  captcha: '.$e->getMessage());
-        }        
+    private function log(mixed $message, string $level = 'debug') {
 
+        if (is_array($message) || is_object($message)) {
+            $message = json_encode($message, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT, 3);
+        }
+
+        Log::channel('browser')->$level($message);
     }
-    
+
 
     private function initBrowser() 
     {
@@ -84,24 +71,13 @@ class CollectPagesCommand extends Command
 
 
         $this->browser = HeadlessBrowserWrapper::factory($params);
-/*
-        $pattern = [
-            "urlPattern" => "*",
-            "requestStage"=> "Response",
-            'resourceType' => 'Script'
-        ];
-        $this->browser->startRequestIntercept([$pattern], function($request) {
-            dump('intercepted');
-            dump($request['request']['url']);
-        });
-*/
 
         $pattern = [
             "urlPattern" => "https://*gcaptcha4.geetest.com/*",
         ];
         $this->browser->startRequestIntercept([$pattern], function($request) {
             $requestUrl = $request['request']['url'];
-            $this->solve($requestUrl, 'https://avito.ru');
+            //$this->solve($requestUrl, 'https://avito.ru');
         });
 
         $this->browser->navigateTab(0, 'https://avito.ru/');
@@ -155,7 +131,7 @@ class CollectPagesCommand extends Command
     private function collectAds(int $page = 1) : ?array
     {        
         if ($page > 1) {
-            dump("Jump to page ".$page);
+            $this->log("Jump to page ".$page);
             $pageSelector = 'a[data-value="'.$page.'"]';
             $currentUrl = $this->browser->runScript(0, 'get_current_url', []);
             $urlParts = parse_url($currentUrl);
@@ -167,10 +143,10 @@ class CollectPagesCommand extends Command
                 $params[] = (fn($el) => preg_match('~^([^=]+)=(.+)$~', $part, $matches) ? [$matches[1] => $matches[2]] : null)($part);
             }
             $params  = array_merge(...$params);
-            dump($params);
+            $this->log($params);
             $newParams = array_merge(['localPriority' => 0,'p' => $page,], ['q' => $params['q']]);
             $newUrl = $url . '?' . http_build_query($newParams);
-            dump("New URL:".$newUrl);
+            $this->log("New URL:".$newUrl);
             $this->browser->navigateTab(0, $newUrl);
 
 
@@ -192,7 +168,7 @@ class CollectPagesCommand extends Command
             return $items;
         }
         else {
-            Log::channel('daily')->warning('no items');
+            $this->log('no items', 'warning');
             return [];
         }
     
@@ -202,8 +178,93 @@ class CollectPagesCommand extends Command
     {
         $selector = '//ul[@data-marker="pagination-button"]/li[position()=last()-1]';
         $count = $this->browser->runScript(0, 'get_element_content', ['elementSelector' => $selector, 'Xpath' => true]);
-        dump('Pages count: ' . $count);             
+        $this->log('Pages count: ' . $count);
         return $count ? intval($count)  : null;
+    }
+
+
+    private function processCaptcha() {
+        echo "Captcha detected!".PHP_EOL;
+        $this->browser->getTab(0)->mouse()->find('button')->click();
+        sleep(15);
+        //Найти элемент div.geetest_container - это весь контейнер со слайдером                            
+        $geeBoxCoords = $this->browser->runScript(0, 'get_element_coords', [
+        'elementSelector' => 'div.geetest_container',
+        'Xpath' => false
+        ]);
+        
+        //Найти элемент div.geetest_bg - это подложка. Картинка в свойстве background-image
+            
+        $geeBgCoords = $this->browser->runScript(0, 'get_element_coords', [
+            'elementSelector' => 'div.geetest_bg',
+            'Xpath' => false
+        ]);
+
+        $this->log("Geetest background coords");
+        $this->log($geeBgCoords);
+
+        //Найти элемент div.geetest_slice_bg - это пазл. Картинка в свойстве background-image getBoundingClientRect получит bbox
+        $geeSliceCoords = $this->browser->runScript(0, 'get_element_coords', [
+            'elementSelector' => 'div.geetest_slice_bg',
+            'Xpath' => false
+        ]);
+
+        $this->log("Geetest Puzzle coords:");
+        $this->log($geeSliceCoords);
+
+
+        //div.geetest_arrow - это  ползунок. getBoundingClientRect()  - получит bbox
+        $geeArrowCoords = $this->browser->runScript(0, 'get_element_coords', [
+            'elementSelector' => 'div.geetest_arrow',
+            'Xpath' => false
+        ]);
+
+        $this->log("Geetest Arrow coords");
+        $this->log($geeArrowCoords);
+
+        if (!($geeBgCoords && $geeSliceCoords && $geeArrowCoords)) {
+            throw new \Exception("Geetest elements not found!");                    
+        }
+
+        $puzzleRelativeTop = floatval($geeSliceCoords[1])-floatval($geeBgCoords[1]);
+        $this->log("Puzzle relative Y: " . $puzzleRelativeTop);
+
+        $cssUrlRegexp = '~url\([\"\']([^\)]+)[\"\']\)~';
+        
+        //Get puzzle image
+        $imageSmall =$this->browser->runScript(0, 'get_element_bgimage', [
+            'elementSelector' => 'div.geetest_slice_bg',
+            'Xpath' => false
+        ]);
+        $this->log('CSS for small:'.$imageSmall);
+        $smallUrl = preg_match($cssUrlRegexp, $imageSmall, $matches) ? $matches[1] : null;
+        if (!$smallUrl) {
+            throw new \Exception("Can't parse puzzle image URL!");
+        }
+        $this->log('Small URL: ' . $smallUrl);
+
+        //Get background image
+        $imageLarge = $this->browser->runScript(0, 'get_element_bgimage', [
+            'elementSelector' => 'div.geetest_bg',
+            'Xpath' => false
+        ]);
+        $this->log('Image large:'.$imageLarge);
+        $largeUrl = preg_match($cssUrlRegexp, $imageLarge, $matches) ? $matches[1] : null;
+        if (!$largeUrl) {
+            throw new \Exception("Can't parse background image URL!");
+        }
+        $this->log('Large URL: ' . $largeUrl);
+
+
+        $this->log("Downloading..");
+        $smDestFilename = base_path('capsolver/input/small.png');
+        HelperService::downloadFile($smallUrl, $smDestFilename);
+    
+        $lgDestFilename = base_path('capsolver/input/large.png');
+        HelperService::downloadFile($largeUrl, $lgDestFilename);
+        
+        $this->log('Captcha background: '. $imageLarge);
+
     }
 
     /**
@@ -215,32 +276,27 @@ class CollectPagesCommand extends Command
         $this->initBrowser();
         sleep(10);
         try {
-            if ($this->browser->getTab(0)->mouse()->find('#geetest_captcha')) {
-                dump("Captcha detected!");
-                dump("click!");
-                $this->browser->getTab(0)->mouse()->find('button')->click();
-                sleep(5);
-                exit;
+            if ($this->browser->getTab(0)->mouse()->find('#geetest_captcha')) {                
+                $this->processCaptcha();
+                return;
             }
         } catch (\Throwable $th) {
-            dump($th->getMessage());
+            dump($th->getMessage().' ' .$th->getTraceAsString());
+            return;
         }
-       foreach ($searchQueries as $query) {
 
+        foreach ($searchQueries as $query) {
            $this->search($query->query_text);
-
            $totalPages = $this->getTotalPages();
-
-           
            for ($i=1 ; $i < $totalPages; $i++ ) {
                 $items = $this->collectAds($i);
-                Log::channel('daily')->debug('Parsed '.count($items).' ads');
+                $this->log('Parsed '.count($items).' ads');
                 $query->update(['observed_at' => now(), 'total_pages' => $totalPages,]);
 
                 $preparedItems = Ad::prepareInsertData($items, $query->id);
                 
                 Ad::insert($preparedItems);
-                Log::channel('daily')->debug('Page '.($i+1).' processed');
+                $this->log('Page '.($i+1).' processed');
                 sleep(random_int(2, 4));
            }
        }
