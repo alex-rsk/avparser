@@ -283,14 +283,14 @@ class CollectPagesCommand extends Command
         
         $this->log('Start X:'. $startX.' Y:'.$startY);
         sleep(random_int(2,5));
-        print_r("Pointing, steps " . $steps);
+        $this->log("Pointing, steps " . $steps);
         $this->browser->getTab(0)->mouse()->move($startX, $startY, ['steps' => $steps])->press(); 
         
         sleep(random_int(2,5));
         //Test
         $distance = $targetX;
         $steps = random_int(4, 8);
-        print_r("Dragging");
+        $this->log("Dragging");
         $this->browser->getTab(0)->mouse()->move($startX + $distance, $startY, ['steps' => $steps])->release();
 
     }
@@ -310,7 +310,7 @@ class CollectPagesCommand extends Command
             }
         } catch (\Throwable $th) {
             dump($th->getMessage().' ' .$th->getTraceAsString());
-            return;
+            $this->log('No captcha', 'debug');
         }
 
         foreach ($searchQueries as $query) {

@@ -33,3 +33,4 @@ capsolver/input/*
 logs
 build
 capsolver/__pycache__
+found.png
