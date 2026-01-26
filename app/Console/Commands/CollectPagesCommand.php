@@ -186,15 +186,8 @@ class CollectPagesCommand extends Command
     private function processCaptcha() {
         echo "Captcha detected!".PHP_EOL;
         $this->browser->getTab(0)->mouse()->find('button')->click();
-        sleep(15);
-        //Найти элемент div.geetest_container - это весь контейнер со слайдером                            
-        $geeBoxCoords = $this->browser->runScript(0, 'get_element_coords', [
-        'elementSelector' => 'div.geetest_container',
-        'Xpath' => false
-        ]);
-        
+        sleep(15);                
         //Найти элемент div.geetest_bg - это подложка. Картинка в свойстве background-image
-            
         $geeBgCoords = $this->browser->runScript(0, 'get_element_coords', [
             'elementSelector' => 'div.geetest_bg',
             'Xpath' => false
@@ -212,19 +205,21 @@ class CollectPagesCommand extends Command
         $this->log("Geetest Puzzle coords:");
         $this->log($geeSliceCoords);
 
-
-        //div.geetest_arrow - это  ползунок. getBoundingClientRect()  - получит bbox
-        $geeArrowCoords = $this->browser->runScript(0, 'get_element_coords', [
-            'elementSelector' => 'div.geetest_arrow',
+        //div.geetest_btn - это  ползунок. getBoundingClientRect()  - получит bbox
+        $geeButtonCoords = $this->browser->runScript(0, 'get_element_coords', [
+            'elementSelector' => 'div.geetest_btn',
             'Xpath' => false
         ]);
 
-        $this->log("Geetest Arrow coords");
-        $this->log($geeArrowCoords);
+        $this->log("Geetest Button coords");
+        $this->log($geeButtonCoords);
 
-        if (!($geeBgCoords && $geeSliceCoords && $geeArrowCoords)) {
+        if (!($geeBgCoords && $geeSliceCoords && $geeButtonCoords)) {
             throw new \Exception("Geetest elements not found!");                    
         }
+
+        $puzzleHeight = 80;
+        $puzzleWidth = 80;
 
         $puzzleRelativeTop = (int)(ceil(floatval($geeSliceCoords[1])-floatval($geeBgCoords[1])));
         $this->log("Puzzle relative Y: " . $puzzleRelativeTop);
@@ -267,8 +262,36 @@ class CollectPagesCommand extends Command
 
         $solverCmd = base_path('dist/capsolver'). ' ' . $smDestFilename . ' ' . $lgDestFilename . ' ' . $puzzleRelativeTop;
         $this->log($solverCmd);
-        exec($solverCmd, $output);
-        $this->log('X-coordinate :' .$output);
+
+        $output = shell_exec($solverCmd);
+        $cleanedOutput = preg_replace('~\s+~', '', $output);
+        if (!is_numeric($cleanedOutput)) {
+            $this->log('Dirty output: '.$cleanedOutput, 'warning');
+        }
+        
+        //X- координата места для пазла, относительно X- координаты подложки
+        $targetX = intval($cleanedOutput);
+        //$absoluteTargetX = 
+        $this->log('X-coordinate :' .$targetX);
+        
+        $steps = random_int(4, 8);
+        $initialOffsetX = random_int(5, 10);
+        $initialOffsetY = random_int(2, 10);
+        $startX = intval($geeButtonCoords[0])+$initialOffsetX;
+        $startY = intval($geeButtonCoords[1])-80 ; //80 is magic number
+        
+        
+        $this->log('Start X:'. $startX.' Y:'.$startY);
+        sleep(random_int(2,5));
+        print_r("Pointing, steps " . $steps);
+        $this->browser->getTab(0)->mouse()->move($startX, $startY, ['steps' => $steps])->press(); 
+        
+        sleep(random_int(2,5));
+        //Test
+        $distance = $targetX;
+        $steps = random_int(4, 8);
+        print_r("Dragging");
+        $this->browser->getTab(0)->mouse()->move($startX + $distance, $startY, ['steps' => $steps])->release();
 
     }
 
@@ -279,7 +302,7 @@ class CollectPagesCommand extends Command
     {
         $searchQueries = SearchQuery::query()->select(['id', 'query_text'])->orderBy('observed_at', 'DESC')->limit(1)->get();
         $this->initBrowser();
-        sleep(10);
+        sleep(5);
         try {
             if ($this->browser->getTab(0)->mouse()->find('#geetest_captcha')) {                
                 $this->processCaptcha();
