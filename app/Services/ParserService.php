@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Services;
 
-use Illuminate\Console\Command;
 use App\Services\HeadlessBrowser\HeadlessBrowserWrapper;
 use Illuminate\Support\Facades\{Log, DB};
 use HeadlessChromium\Page;
@@ -11,28 +10,38 @@ use App\Models\AdView;
 use App\Models\AdReview;
 use App\Models\SearchQuery;
 use HeadlessChromium\Dom\Selector\CssSelector;
-use App\Services\ParserService;
 
-class VisitAdsCommand extends Command
+class ParserService 
 {
-    protected $browser = null;
+    private int $portNumber = 0;
 
-    protected $page = null;
+    private int $instanceNumber = 0;
 
-    protected $url = '';
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'browser:visit-ads {qid?}';
+    private ?string $proxy = null;
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Visit ad pages by specified search query';
+    private $browser = null;
+
+    private $page = null;
+
+    private $url = '';
+
+    public function __construct(int $instanceNumber = 1, ?string $proxy = null)
+    {
+        $this->instanceNumber = $instanceNumber;
+        
+        $this->portNumber = intval(config('headless-chrome.default_debug_port')) + $this->instanceNumber - 1;
+       
+        if (!empty($proxy)) {
+            $this->proxy = $proxy;
+        }
+
+        $this->browser = $this->initBrowser();
+    }
+
+    public function getPortNumber() : int 
+    {
+        return $this->portNumber;
+    }
 
     private function initBrowser() 
     {
@@ -46,9 +55,9 @@ class VisitAdsCommand extends Command
             //имя инстанса
             'user_data_dir'         => 'avito1',
             //открываемый URL
-            //'url'                   => 'https://avito.ru',
+            // 'url'                   => $url,
             //порт для связи с браузером
-            //'debug_port'            => $this->portNumber + $this->inst - 1,
+            'debug_port'            => $this->portNumber,// + $this->inst - 1,
             //очистка кэша скрипта    
             'clear_script_cache'    => true,
             //каждый раз стартовать принудительно новый инстанс
@@ -60,15 +69,17 @@ class VisitAdsCommand extends Command
             //скрипт предзагрузки
             'preload_script'         => null,//'avito/capture_ratings',
             //ID потока
-            'thread_id'             => 'test-thread',
+            'thread_id'             => 'thread-id-'.$this->instanceNumber,
             //прокси
             //'proxy'                 => '176.9.113.112:48000:889946558:41V9JHxLBsNiTvD8Lcrw',
         ];
 
+        if (!empty($this->proxy)) {
+            $params['proxy'] = $this->proxy;
+        }
 
-        $this->browser = HeadlessBrowserWrapper::factory($params);
+        return HeadlessBrowserWrapper::factory($params);
         //$this->browser->startRequestIntercept();
-        sleep(random_int(1, 3));
     }
     
     private function check404() : bool
@@ -97,7 +108,7 @@ class VisitAdsCommand extends Command
             'elementSelector' => $selectorTotalViews, 'Xpath' => true
         ]);
 
-        return [ intval($todayViews) ?? null,  intval($totalViews) ?? null];
+        return [ intval(preg_replace('~\D~', '',  $todayViews)) ?? null,  intval($totalViews) ?? null];
     }
 
     private function getRatings(string $title) : array
@@ -112,7 +123,7 @@ class VisitAdsCommand extends Command
         sleep(2);
         $ratingsSelector = 'a[data-marker="rating-caption/rating"]';
         //$this->browser->getTab(0)->mouse()->find($ratingsSelector)->click();        
-        $newURL = 'https://www.avito.ru'.$this->url.'#open-reviews-list';
+        $newURL = $this->url.'#open-reviews-list';
         try {
             $this->page->navigate($newURL)->waitForNavigation(Page::DOM_CONTENT_LOADED, 5);
         }
@@ -198,32 +209,66 @@ class VisitAdsCommand extends Command
         catch (\Exception $ex) { 
             Log::channel('browser')->warning('Error getAdInfo: '.$ex->getMessage().' '.$ex->getTraceAsString());            
             return null;
-        }        
-
+        }
     }
-   
-    /**
-     * Execute the console command.
-     */
-    public function handle()
-    {       
-       $sqId = $this->argument('qid');
-       $ads = Ad::query()->select(['ads.id', 'ads.url', 'ads.clean_url', 'ads.title'])
-            ->whereNotIn('status', ['error', 'visited'])
-            ->when(isset($sqId), function ($query) use ($sqId) {
-                return $query->where('search_query_id', $sqId);
-            })
-            ->join('search_queries', 'search_queries.id', '=', 'ads.search_query_id')
-            ->orderByRaw('search_queries.observed_at DESC, ads.last_visited_at DESC, ads.created_at DESC')
-            ->limit(2)->get();
 
-       //dump($ads->toArray());
+    public function processAdPage(Ad $ad)
+    {  
+        $this->url = 'https://www.avito.ru'.$ad->clean_url;
+        $this->page = $this->browser->openTab($this->url);
+        $adInfo  = $this->getAdInfo($ad->clean_url, $ad->title);
 
-       $serv = new ParserService(instanceNumber : 1, proxy : null);
+        if (is_null($adInfo)) {
+            Log::channel('daily')->warning('Ad info is empty: '.$ad->id);
+            $ad->status = 'error';
+            $ad->save(); 
+            return;
+        }
 
-       foreach ($ads as $ad) {
-            Log::channel('browser')->debug('Advertisement id: '.$ad->id);
-            $serv->processAdPage($ad);
-       }
+        Log::channel('browser')->debug($adInfo);
+        $ad->update([
+            'status' => 'visited',
+            'title' => $ad->title,
+            'price' => $adInfo['price'],
+            'rating' => $adInfo['average_rating'],
+            'last_visited_at' => now(),
+            'created_at' => now(),
+        ]);
+
+        dump($adInfo);
+
+        AdView::upsert(
+            [ 
+                'ad_id' => $ad->id,
+                'plus_views'  => $adInfo['today_views'], 
+                'total_views' => $adInfo['total_views'],
+            ],
+            ['id'],
+            [
+                'plus_views'  => $adInfo['today_views'],
+                'total_views' => $adInfo['total_views'],
+            ]
+        );
+
+        foreach ($adInfo['reviews'] as $review) {
+            $reviewObj = AdReview::create([
+                'ad_id' => $ad->id,
+                'rating' => $review['score'],
+                'created_at' => now()
+            ]);
+
+            $reviewObj->save();
+        }
+            
+        $rands = array_fill(0, random_int(2, 5), [ 'x' => random_int(100, 500), 'y' => random_int(100, 500)]);
+
+        foreach ($rands as $rand) {
+            $randSteps = random_int(2, 5);
+            $this->page->mouse()->move($rand['x'], $rand['y'], ['steps' => $randSteps]);
+            sleep(random_int(2, 3));
+        }
+
+        dump("Closing page");
+        $this->page->close();
     }
 }
