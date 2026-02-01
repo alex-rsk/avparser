@@ -309,7 +309,6 @@ class CollectPagesCommand extends Command
                 return;
             }
         } catch (\Throwable $th) {
-            dump($th->getMessage().' ' .$th->getTraceAsString());
             $this->log('No captcha', 'debug');
         }
 

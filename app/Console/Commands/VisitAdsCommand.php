@@ -19,7 +19,7 @@ class VisitAdsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'browser:visit-ads {qid}';
+    protected $signature = 'browser:visit-ads {qid?}';
 
     /**
      * The console command description.
@@ -42,7 +42,7 @@ class VisitAdsCommand extends Command
             //открываемый URL
             'url'                   => 'https://avito.ru',
             //порт для связи с браузером
-            //'debug_port'            => $this->portNumber + $this->instance - 1,
+            //'debug_port'            => $this->portNumber + $this->inst - 1,
             //очистка кэша скрипта    
             'clear_script_cache'    => true,
             //каждый раз стартовать принудительно новый инстанс
@@ -191,9 +191,13 @@ class VisitAdsCommand extends Command
     public function handle()
     {       
        $sqId = $this->argument('qid');
-       $ads = Ad::query()->select(['id', 'url', 'clean_url', 'title'])
-            ->whereNotIn('status', ['error', 'visited'])->where('search_query_id', $sqId)
-            ->orderByRaw('RAND()')
+       $ads = Ad::query()->select(['ads.id', 'ads.url', 'ads.clean_url', 'ads.title'])
+            ->whereNotIn('status', ['error', 'visited'])
+            ->when(isset($sqId), function ($query) use ($sqId) {
+                return $query->where('search_query_id', $sqId);
+            })
+            ->join('search_queries', 'search_queries.id', '=', 'ads.search_query_id')
+            ->orderByRaw('search_queries.observed_at DESC, ads.last_visited_at DESC, ads.created_at')
             ->limit(1)->get();
 
        //dump($ads->toArray());
@@ -201,7 +205,8 @@ class VisitAdsCommand extends Command
        $this->initBrowser();
 
        foreach ($ads as $ad) {
-            dump($ad->id);
+            Log::channel('browser')->debug('Advertisement id: '.$ad->id);
+
             $adObj = Ad::find($ad->id);
             $adInfo  = $this->getAdInfo($ad->clean_url, $ad->title);
             if (is_null($adInfo)) {
@@ -210,7 +215,7 @@ class VisitAdsCommand extends Command
                 $adObj->save();
                 continue;
             }
-            dump($adInfo);
+            Log::channel('browser')->debug($adInfo);
             $adObj->update([
                 'status' => 'visited',
                 'title' => $ad->title,
@@ -236,6 +241,12 @@ class VisitAdsCommand extends Command
                 ]);
 
                 $reviewObj->save();
+            }
+             
+            $rands = array_fill(0, random_int(2, 5), [ 'x' => random_int(100, 500), 'y' => random_int(100, 500)]);
+            foreach ($rands as $rand) {
+                $randSteps = random_int(2, 5);
+                $this->browser->getTab(0)->mouse()->move($rand['x'], $rand['y'], ['steps' => $steps]);
             }
        }
     }

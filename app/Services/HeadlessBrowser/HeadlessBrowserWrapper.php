@@ -182,8 +182,9 @@ class HeadlessBrowserWrapper
                 }
             }
         }
+
         if (!empty($profileDir)) {
-            dump($profileDir);
+            Log::channel('browser')->debug("Trying to remove socket file");
             $socketFile = $profileDir.DIRECTORY_SEPARATOR.'socket';
             if (file_exists($socketFile))
             {
@@ -235,7 +236,7 @@ class HeadlessBrowserWrapper
                 $this->created = false;
             } catch (\HeadlessChromium\Exception\BrowserConnectionFailed $e) {
                 Log::channel('browser')->warning('Ошибка подключения. ID потока: '.$params['thread_id'].' Сообщение:' .$e->getMessage());
-                self::checkHangingProcess($params['thread_id'], $params['user_data_dir']);
+                self::checkHangingProcess($params['thread_id'], $this->userDirectory);
             }
         }
         else {
@@ -262,6 +263,7 @@ class HeadlessBrowserWrapper
             }
         }
 
+        dump($browser);
         $this->browser = $browser;
         $this->afterCreation($params);
     }
@@ -281,7 +283,7 @@ class HeadlessBrowserWrapper
         $this->userDirectory = trim($config['profile_dir'].DIRECTORY_SEPARATOR.'userData'
             .DIRECTORY_SEPARATOR.$params['user_data_dir']);
 
-        $this->socketFile    = $this->userDirectory.DIRECTORY_SEPARATOR. 'socket';
+        $this->socketFile  = $this->userDirectory.DIRECTORY_SEPARATOR. 'socket';
 
         if (!file_exists($this->userDirectory)) {
             if (!mkdir($this->userDirectory, 0777, true))
@@ -718,7 +720,7 @@ class HeadlessBrowserWrapper
         $messageEnable = new Message('Fetch.enable', ['pattern' => $pattern,
             'handleAuthRequests' => true]);
 
-        $connection    = $this->browser->getConnection();
+        $connection  = $this->browser->getConnection();
         $connection->sendMessageSync($messageEnable);
 
         $connection->on('method:Fetch.requestPaused', function($request)
