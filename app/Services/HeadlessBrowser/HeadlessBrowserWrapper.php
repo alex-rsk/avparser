@@ -47,11 +47,11 @@ class HeadlessBrowserWrapper
     public $status     = null;
 
     /**
-     * Номер текущей вкладки 
+     * Объект текущей вкладки 
      * 
-     * @var int 
+     * @var ?Page
      */
-    public $currentTab  = null;
+    public ?Page $currentTab  = null;
 
     /**
      * Вкладки 
@@ -226,7 +226,7 @@ class HeadlessBrowserWrapper
         $this->prepareEnvironment($params);
         $options = $this->prepareFlags($params);
         $socketExists = file_exists($this->socketFile);
-        dump($this->socketFile);
+        //dump($this->socketFile);
         $browser = false;
         if ($socketExists) {
             Log::channel('browser')->debug('Файл сокета существует, ID потока: '.$params['thread_id']);
@@ -263,7 +263,6 @@ class HeadlessBrowserWrapper
             }
         }
 
-        dump($browser);
         $this->browser = $browser;
         $this->afterCreation($params);
     }
@@ -394,13 +393,13 @@ class HeadlessBrowserWrapper
                 $clearCookies = isset($params['clear_cookies']) && $params['clear_cookies'];
                 $clearCache = isset($params['clear_cache']) && $params['clear_cache'];
 
-                $this->currentTab = $this->openTab($params['url'], $onLoadEvent,
+                $this->currentTab = $this->openTab($params['url'] ?? '', $onLoadEvent,
                     $config['first_load_timeout_ms'], $cookies, $clearCookies, $clearCache);
             }
             else {
                 $cookies = [];
                 //$this->currentTab = $this->attachTab(0, $params['url'], $onLoadEvent,  $config['load_timeout_ms']);
-                $this->currentTab = $this->openTab($params['url'], $onLoadEvent, $config['first_load_timeout_ms'], $cookies );
+                $this->currentTab = $this->openTab($params['url'] ?? '', $onLoadEvent, $config['first_load_timeout_ms'], $cookies );
             }
 
             $this->stopRequestIntercept();
@@ -428,7 +427,7 @@ class HeadlessBrowserWrapper
      * 
      * @return int ID вкладки
      */
-    public function openTab($url, $waitFor = Page::DOM_CONTENT_LOADED,
+    public function openTab(?string $url = '', $waitFor = Page::DOM_CONTENT_LOADED,
         $timeout = 15000, $cookies = [], $clearCookies = false,
         $clearCache = false)
     {
@@ -459,7 +458,8 @@ class HeadlessBrowserWrapper
         {
             $this->navigateTab($pageNumber, $url, $timeout * 1000, $waitFor);
         }
-        return $pageNumber;
+
+        return $page;
     }
 
      /**
@@ -549,7 +549,7 @@ class HeadlessBrowserWrapper
         }
         return $this->tabs[$number];
     }
-
+    
     /**
      * Переход на страницу
      * 
@@ -564,7 +564,7 @@ class HeadlessBrowserWrapper
             return false;
         }
         
-        $this->tabs[$number]->navigate($url)->waitForNavigation($waitFor, $timeout);
+        return $this->tabs[$number]->navigate($url)->waitForNavigation($waitFor, $timeout);
     }
 
     /**
@@ -607,6 +607,27 @@ class HeadlessBrowserWrapper
         return $result;
     }
 
+    public function runScriptOnPage(Page $page, $script, $params = [], 
+        $timeout = 5, $waitForReload = false)
+    {
+        Log::channel('browser')->debug('runScriptOnPage Запуск скрипта '.$script);        
+        $scriptSource = $this->scriptLoader->load($script, $params);
+
+        if (empty($scriptSource))
+        {
+            throw new \Exception('Скрипт '.$script.' не найден');
+        }
+        
+        $result = $page->evaluate($scriptSource)->getReturnValue($timeout ? $timeout * 1000 : null);
+
+        if ($waitForReload)
+        {
+            $page->waitForReload();
+        }
+
+        return $result;
+    }
+
     /**
      * Предзагрузка скрипта для всего браузера или вкладки
      * 
@@ -635,7 +656,7 @@ class HeadlessBrowserWrapper
      * @param int $y - координата Y поля ввода
      * @param string $text - текст
      */
-    public function inputText($number = null, $x = 0, $y = 0, $text= ' ')
+    public function inputText($number = 0, $x = 0, $y = 0, $text= ' ')
     {
         $number = $number ?? $this->currentTab;
         $this->tabs[$number]->mouse()->move($x,$y);
@@ -655,7 +676,7 @@ class HeadlessBrowserWrapper
         }
         $this->tabs[$number]->keyboard()->enter();
         */
-        $this->tabs[$number]->keyboard()->type($text);
+        $this->tabs[$number]->keyboard()->type( $text);
     }
     
      /**
@@ -664,7 +685,7 @@ class HeadlessBrowserWrapper
      * @param int $number номер вкладки
      * @param string $fileName имя файла для скриншота
      */
-    public function screenshot($number = null, $fileName = null)
+    public function screenshot($number = 0, $fileName = null)
     {
         $number = $number ?? $this->currentTab;
         $fileName = $fileName ?? 'screen.png';
@@ -687,7 +708,7 @@ class HeadlessBrowserWrapper
      * @param int $delayTo  ожидание между скроллами (до, мксек)
      * 
      */
-    public function scrollPage($number = null, $times = 60, $timeout = null,
+    public function scrollPage($number = 0, $times = 60, $timeout = null,
         $delayFrom = 50, $delayTo = 100)
     {
         $config = config('headless-chrome');
@@ -744,6 +765,7 @@ class HeadlessBrowserWrapper
             $connection->sendMessage($messageContinue);
         });
     }
+    
 
      /**
 

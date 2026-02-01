@@ -10,10 +10,15 @@ use App\Models\Ad;
 use App\Models\AdView;
 use App\Models\AdReview;
 use App\Models\SearchQuery;
+use HeadlessChromium\Dom\Selector\CssSelector;
 
 class VisitAdsCommand extends Command
 {
     protected $browser = null;
+
+    protected $page = null;
+
+    protected $url = '';
     /**
      * The name and signature of the console command.
      *
@@ -40,7 +45,7 @@ class VisitAdsCommand extends Command
             //имя инстанса
             'user_data_dir'         => 'avito1',
             //открываемый URL
-            'url'                   => 'https://avito.ru',
+            //'url'                   => 'https://avito.ru',
             //порт для связи с браузером
             //'debug_port'            => $this->portNumber + $this->inst - 1,
             //очистка кэша скрипта    
@@ -61,21 +66,20 @@ class VisitAdsCommand extends Command
 
 
         $this->browser = HeadlessBrowserWrapper::factory($params);
-        $this->browser->navigateTab(0, 'https://avito.ru/');
         //$this->browser->startRequestIntercept();
         sleep(random_int(1, 3));
     }
     
     private function check404() : bool
     {
-        $is404 = $this->browser->runScript(0, 'avito/check_404');
+        $is404 = $this->browser->runScriptOnPage($this->page, 'avito/check_404');
         return intval($is404) > 0;
     }
 
     private function getPrice() : ?float
     {
         $selector = '//span[@data-marker="item-view/item-price"]';
-        $price = $this->browser->runScript(0, 'get_element_content', ['elementSelector' => $selector, 'Xpath' => true]);
+        $price = $this->browser->runScriptOnPage($this->page, 'get_element_content', ['elementSelector' => $selector, 'Xpath' => true]);
         return $price ? floatval(preg_replace('~[^\d]~ ','', $price)) : null;
     }
 
@@ -84,8 +88,8 @@ class VisitAdsCommand extends Command
         $selectorTotalViews = '//span[@data-marker="item-view/total-views"]';
         $selectorTodayViews = '//span[@data-marker="item-view/today-views"]';
 
-        $todayViews = $this->browser->runScript(0, 'get_element_content', ['elementSelector' => $selectorTodayViews, 'Xpath' => true]);
-        $totalViews = $this->browser->runScript(0, 'get_element_content', ['elementSelector' => $selectorTotalViews, 'Xpath' => true]);
+        $todayViews = $this->browser->runScriptOnPage($this->page, 'get_element_content', ['elementSelector' => $selectorTodayViews, 'Xpath' => true]);
+        $totalViews = $this->browser->runScriptOnPage($this->page, 'get_element_content', ['elementSelector' => $selectorTotalViews, 'Xpath' => true]);
 
         return [ intval($todayViews) ?? null,  intval($totalViews) ?? null];
     }
@@ -95,33 +99,44 @@ class VisitAdsCommand extends Command
         $result = ['average_rating' => 0, 'reviews' => []];
 
         $avgRatingsSelector = 'div.seller-info-rating>span:nth-child(1)';
-        $avgRating = $this->browser->runScript(0, 'get_element_content', ['elementSelector' => $avgRatingsSelector, 'Xpath' => false]);
+        $avgRating = $this->browser->runScriptOnPage($this->page, 'get_element_content', [
+            'elementSelector' => $avgRatingsSelector, 'Xpath' => false]);
         $result['average_rating'] = floatval(str_replace(',', '.', $avgRating));
 
         sleep(2);
         $ratingsSelector = 'a[data-marker="rating-caption/rating"]';
-        $this->browser->getTab(0)->mouse()->find($ratingsSelector)->click();        
+        //$this->browser->getTab(0)->mouse()->find($ratingsSelector)->click();        
+        $newURL = 'https://www.avito.ru'.$this->url.'#open-reviews-list';
+        dump("list reviews");
+        dump('URL:'.$newURL);
 
-        $reviewsModalSelector = 'div[role="dialog"]';
-        sleep(3); //@TODO заменить на waitForelement
+        try {
+            $this->page->navigate($newURL)->waitForNavigation(Page::DOM_CONTENT_LOADED, 5);
+        }
+        catch (\Exception $ex)
+        {
+            Log::channel('browser')->warning('No signal about readiness to navigation');
+        }
 
-        $totalReviews = intval($this->browser->runScript(0, 'get_element_content', [
+        $reviewsModalSelector = 'div[role="dialog"]'; 
+
+        $this->page->waitUntilContainsElement(new CssSelector($reviewsModalSelector), 5 * 10**3);        
+        
+        $totalReviews = intval($this->browser->runScriptOnPage($this->page, 'get_element_content', [
             'elementSelector' => 'a[data-marker="rating-caption/rating"]',
              'Xpath' => false
-        ]));
+        ]),5 );
 
         dump('Total reviews:'.$totalReviews);
 
-        list($modalX, $modalY) = $this->browser->runScript(0, 'get_element_coords', [
+        list($modalX, $modalY) = $this->browser->runScriptOnPage($this->page, 'get_element_coords', [
             'elementSelector' => $reviewsModalSelector,
             'Xpath' => false
-        ]);
+        ], 5);
         dump($modalX, $modalY);
 
         if ($totalReviews > 25) {
-            $this->browser->getTab(0)
-                ->mouse()
-                ->move(500, 300 )->scrollDown(100);
+            $this->page->mouse()->move(500, 300 )->scrollDown(100);
                 //->move($modalX+random_int(35, 60), $modalY+random_int(35, 60), ['steps' => random_int(20,30)])->click();
 
             $count = ceil($totalReviews/25);
@@ -132,12 +147,12 @@ class VisitAdsCommand extends Command
 
             for ($i = 0; $i < $count; $i++) {
                 dump('Sweep '.$sweep);
-                $this->browser->getTab(0)->mouse()->scrollDown(200);
+                $this->page->mouse()->scrollDown(200);
                 sleep(random_int(1,2));
             }
         }
 
-        $reviews = $this->browser->runScript(0, 'avito/get_reviews');
+        $reviews = $this->browser->runScriptOnPage($this->page, 'avito/get_reviews');
         if ($reviews) {
             $result['reviews'] = $reviews;
         }        
@@ -150,16 +165,16 @@ class VisitAdsCommand extends Command
 
     private function getAdInfo(string $adUrl, string $title)  : ?array
     {
-        try {
-            $url = 'https://avito.ru'.$adUrl;
-            $this->browser->navigateTab(0, $url);
-            sleep(3);
+        try {            
             if ($this->check404()) {
+                $this->page->close();
+                dump("Closing");
                 return null;
             }
             $price = $this->getPrice();
             list ($today, $total) = $this->getViews();
             $ratings = $this->getRatings($title);
+            
 
             $filteredReviews = array_filter($ratings['reviews'], function ($review) use ($title) {
                 return trim($review['title']) == trim($title);
@@ -179,9 +194,9 @@ class VisitAdsCommand extends Command
             ];
         } 
         catch (\Exception $ex) { 
-            Log::channel('daily')->warning('Error getAdInfo: '.$ex->getMessage().' '.$ex->getTraceAsString());
+            Log::channel('browser')->warning('Error getAdInfo: '.$ex->getMessage().' '.$ex->getTraceAsString());            
             return null;
-        }
+        }        
 
     }
    
@@ -197,8 +212,8 @@ class VisitAdsCommand extends Command
                 return $query->where('search_query_id', $sqId);
             })
             ->join('search_queries', 'search_queries.id', '=', 'ads.search_query_id')
-            ->orderByRaw('search_queries.observed_at DESC, ads.last_visited_at DESC, ads.created_at')
-            ->limit(1)->get();
+            ->orderByRaw('search_queries.observed_at DESC, ads.last_visited_at DESC, ads.created_at DESC')
+            ->limit(2)->get();
 
        //dump($ads->toArray());
        
@@ -206,13 +221,16 @@ class VisitAdsCommand extends Command
 
        foreach ($ads as $ad) {
             Log::channel('browser')->debug('Advertisement id: '.$ad->id);
-
             $adObj = Ad::find($ad->id);
+            $this->url = $ad->clean_url;
+
+            $url = 'https://www.avito.ru'.$this->url;
+            $this->page = $this->browser->openTab($url);
             $adInfo  = $this->getAdInfo($ad->clean_url, $ad->title);
             if (is_null($adInfo)) {
                 Log::channel('daily')->warning('Ad info is empty: '.$ad->id);
                 $adObj->status = 'error';
-                $adObj->save();
+                $adObj->save(); 
                 continue;
             }
             Log::channel('browser')->debug($adInfo);
@@ -227,9 +245,9 @@ class VisitAdsCommand extends Command
 
             $viewsObj = AdView::create([
                 'ad_id' => $adObj->id,
-                'plus_views' => $adInfo['today_views'], 
+                'plus_views'  => $adInfo['today_views'], 
                 'total_views' => $adInfo['total_views'],
-                 'created_at' => now()
+                'created_at'  => now()
             ]);
             $viewsObj->save();
 
@@ -246,8 +264,10 @@ class VisitAdsCommand extends Command
             $rands = array_fill(0, random_int(2, 5), [ 'x' => random_int(100, 500), 'y' => random_int(100, 500)]);
             foreach ($rands as $rand) {
                 $randSteps = random_int(2, 5);
-                $this->browser->getTab(0)->mouse()->move($rand['x'], $rand['y'], ['steps' => $steps]);
+                $this->page->mouse()->move($rand['x'], $rand['y'], ['steps' => $randSteps]);
+                sleep(random_int(2, 3));
             }
+            $this->page->close();            
        }
     }
 }

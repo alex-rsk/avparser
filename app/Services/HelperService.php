@@ -51,7 +51,7 @@ class HelperService
             'challenge' => $params['challenge'],
             'captchaId' => $params['captcha_id'],
         ];
-        dump($solverParams);
+        //dump($solverParams);
         try {
             //$result = $solver->geetest_v4($solverParams);
 
