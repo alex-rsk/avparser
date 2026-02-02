@@ -16,8 +16,9 @@ class SearchQueriesTable
     {
         return $table
             ->columns([
-                TextColumn::make('query_text'),
-                TextColumn::make('observed_at')->since(),
+                TextColumn::make('query_text')->label('Запрос'),
+                TextColumn::make('observed_at')->label('Последнее обновление')->since(),
+                TextColumn::make('ads_count')->label('Количество объявлений'),
             ])
             ->filters([
                 //

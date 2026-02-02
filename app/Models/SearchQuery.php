@@ -17,5 +17,9 @@ class SearchQuery extends Model
     {
         return $this->hasMany(Ad::class);
     }
+
+    public function getAdsCountAttribute() {
+        return $this->ads()->count();
+    }
    
 }

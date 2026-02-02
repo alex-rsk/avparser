@@ -209,12 +209,12 @@ class VisitAdsCommand extends Command
     {       
        $sqId = $this->argument('qid');
        $ads = Ad::query()->select(['ads.id', 'ads.url', 'ads.clean_url', 'ads.title'])
-            ->whereNotIn('status', ['error', 'visited'])
+            ->whereIn('status', ['new', 'visited'])
             ->when(isset($sqId), function ($query) use ($sqId) {
                 return $query->where('search_query_id', $sqId);
             })
             ->join('search_queries', 'search_queries.id', '=', 'ads.search_query_id')
-            ->orderByRaw('search_queries.observed_at DESC, ads.last_visited_at DESC, ads.created_at DESC')
+            ->orderByRaw('IF(ads.status="visited", 0, 1) ASC, ads.last_visited_at DESC, ads.created_at DESC')
             ->limit(2)->get();
 
        //dump($ads->toArray());
