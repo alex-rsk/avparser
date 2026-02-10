@@ -148,13 +148,6 @@ class CollectPagesCommand extends Command
             $newUrl = $url . '?' . http_build_query($newParams);
             $this->log("New URL:".$newUrl);
             $this->browser->navigateTab(0, $newUrl);
-
-
-        
-            //https://www.avito.ru/krasnodar/dlya_doma_i_dachi?q=...
-            //https://www.avito.ru/krasnodar/dlya_doma_i_dachi?localPriority=0&p=2&q=...
-
-           //$this->browser->runScript(0, 'avito/jump_to_page', ['elementSelector' => $pageSelector, 'Xpath' => true]);
             sleep(5);
         }
 

@@ -40,28 +40,11 @@ class HelperService
         return true;
     }
 
-
-    public static function  solveWithTwoCaptcha(string $url, string $pageUrl) {
-        $urlParams = parse_url($url, PHP_URL_QUERY);
-        parse_str($urlParams, $params);
-        $apiKey = config('services.rucaptcha.api_key');
-        $solver = new TwoCaptcha($apiKey);
-        $solverParams  = [
-            'url' => $pageUrl,
-            'challenge' => $params['challenge'],
-            'captchaId' => $params['captcha_id'],
-        ];
-        //dump($solverParams);
-        try {
-            //$result = $solver->geetest_v4($solverParams);
-
-            dump($result);
-            //sleep(random_int(2, 4));
-            
-        } catch (\Exception $e) {
-            Log::channel('browser')->error('Error solving  captcha: '.$e->getMessage());
-        }        
-
+    public static function checkProcess(int $pid)
+    {
+        $cmd = 'ps h -o pid -p '.$pid;
+        $out = shell_exec($cmd);
+        return !empty($out);
     }
     
 }

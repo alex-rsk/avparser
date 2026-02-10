@@ -14,7 +14,9 @@ return new class extends Migration
         Schema::create('parser_tasks', function (Blueprint $table) {
             $table->id();
             $table->string('title', 1024);
-            $table->unsignedInteger('search_query_id');                
+            $table->unsignedInteger('search_query_id');
+            $table->enum('stage', [ 'new' , 'pages', 'ads', 'done'])->default('new');
+            $table->enum('status', ['active', 'paused', 'stopped', 'error'])->default('paused');
             $table->unsignedTinyInteger('priority')->default(1);
             $table->unsignedBigInteger('process_pid')->nullable();
             $table->timestamps();
