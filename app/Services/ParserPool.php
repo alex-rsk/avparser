@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Log;
 use App\Models\{ParserTask, Settings};
 use App\Services\Exceptions\TooManyInstancesException;
+use App\Services\ParserService;
 
 
 class ParserPool 
@@ -36,7 +37,7 @@ class ParserPool
                     $parserTask->process_pid = 0;
                     $parserTask->save();
                 } else {
-                    $this->tasks[$parserTask->searchQuery->query_text] = $parserTask;
+                    self::$tasks[$parserTask->searchQuery->query_text] = $parserTask;
                 }
             } else {
                 Log::channel('daily')->warning('Process pid is empty, process task ID: '.$parserTask->id);
@@ -45,11 +46,33 @@ class ParserPool
         
     }
 
-    
-    private function getActualProcessesCount()
+
+    public function getTasks() : array
     {
+        return self::$tasks;
+    }
+
+    
+    public function getActualProcessesCount()
+    {
+        $config = config('headless-chrome');
+        $cmd = $config['browser_bin'];
+
+        $browserBinPath = explode(DIRECTORY_SEPARATOR, $config['browser_bin']);
+        $bin = end($browserBinPath);
+
+        $browser = preg_match('#chromium|chrome|canary#si', $bin, $matches) ?
+            strtolower($matches[0]) : false;
+
+        if (!$browser){
+            Log::channel('browser')->debug('Неправильное имя браузера: '.$bin);
+            return false;
+        }
+
+        $browserGrep = '['.substr($browser,0,1).']'.substr($browser,1);
+        //$checkCommand = 'ps -eaf | grep "'.$browserGrep.'.*thread-id" | awk \'$1 ~ /./ {print $2}\'';
         $cmdCount = 'ps -eaf | grep "'.$browserGrep.'.*thread-id" | awk \'$1 ~ /./ {print $2}\' | wc -l';
-        $output =  shell_exec($cmdCount);
+        exec($cmdCount, $output);
         if ($output) {
             return (int) $output;
         }
@@ -59,7 +82,7 @@ class ParserPool
     public function addBrowserInstance(ParserTask $parserTask) : ?int
     {
         try {
-            $instCount = $this->getActuallProcessesCount();
+            $instCount = $this->getActualProcessesCount();
 
             $maxInstances = Settings::getBySlug('browser_process_count') ?? config('headless-chrome.max_instances');
 
@@ -67,15 +90,18 @@ class ParserPool
                 throw new TooManyInstancesException();
             }
             
-            if (isset($this->tasks[$parserTask->searchQuery->query_text])) {
+            if (isset(self::$tasks[$parserTask->searchQuery->query_text])) {
                 return $parserTask->process_pid;
             }
 
             if ($parserTask->status == 'active') {
-                
-            }
-            $this->tasks[$parserTask->searchQuery->query_text] = $parserTask;
 
+            }
+
+            self::$tasks[$parserTask->searchQuery->query_text] = $parserTask;
+
+            $ps = new ParserService();
+            $ps->run($parserTask);
             return $parserTask->process_pid;
 
             Cache::forever(self::TASKS_CACHE_KEY, $this->instances);

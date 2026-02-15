@@ -13,6 +13,7 @@ class SearchQuery extends Model
     protected $table = 'search_queries';
     protected $guarded = [];
 
+
     public function ads() : HasMany
     {
         return $this->hasMany(Ad::class);

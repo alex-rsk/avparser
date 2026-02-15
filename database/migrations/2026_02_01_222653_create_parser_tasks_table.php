@@ -19,6 +19,8 @@ return new class extends Migration
             $table->enum('status', ['active', 'paused', 'stopped', 'error'])->default('paused');
             $table->unsignedTinyInteger('priority')->default(1);
             $table->unsignedBigInteger('process_pid')->nullable();
+            $table->timestamp('started_at')->nullable();
+            $table->timestamp('finished_at')->nullable();
             $table->timestamps();
 
             $table->foreign('search_query_id')->references('id')->on('search_queries')->onDelete('cascade')->onUpdate('cascade');

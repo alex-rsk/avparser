@@ -152,7 +152,7 @@ class HeadlessBrowserWrapper
     {
         $config = config('headless-chrome');
         $cmd = $config['browser_bin'];
-
+        echo 'CheckHanging process';
         $browserBinPath = explode(DIRECTORY_SEPARATOR, $config['browser_bin']);
         $bin = end($browserBinPath);
 
@@ -164,12 +164,11 @@ class HeadlessBrowserWrapper
             return false;
         }
         $browserGrep = '['.substr($browser,0,1).']'.substr($browser,1);
-        $checkCommand = 'ps -eaf | grep "'.$browserGrep.'.*thread-id-'.$instanceNumber.'" | awk \'$1 ~ /./ {print $2}\'';
+        $checkCommand = 'ps -eaf | grep "'.$browserGrep.'.*'.$instanceNumber.'" | awk \'$1 ~ /./ {print $2}\'';
         Log::channel('browser')->debug('Check command ' . $checkCommand);
         $pids = [];
-
         exec($checkCommand, $pids);
-
+        dump('Pids:'.print_r($pids, true));
         if (!empty($pids))
         {
             foreach ($pids as $pid)
@@ -184,11 +183,19 @@ class HeadlessBrowserWrapper
         }
 
         if (!empty($profileDir)) {
+            
             Log::channel('browser')->debug("Trying to remove socket file");
-            $socketFile = $profileDir.DIRECTORY_SEPARATOR.'socket';
-            if (file_exists($socketFile))
+            $filesToDelete = [
+                $profileDir.DIRECTORY_SEPARATOR.'socket',
+                $profileDir.DIRECTORY_SEPARATOR.'SingletonLock',
+                $profileDir.DIRECTORY_SEPARATOR.'SingletonCookie',
+                $profileDir.DIRECTORY_SEPARATOR.'SingletonSocket',
+            ];
+            foreach ($filesToDelete as $file)
+            if (file_exists($file))
             {
-                unlink($socketFile);
+                Log::channel('browser')->debug('Delete '.$file);
+                unlink($file);
             }
         }
         return true;
@@ -232,7 +239,7 @@ class HeadlessBrowserWrapper
             Log::channel('browser')->debug('Файл сокета существует, ID потока: '.$params['thread_id']);
             $socket = file_get_contents($this->socketFile);
             try {
-                $browser = BrowserFactory::connectToBrowser($socket, []);
+                $browser = BrowserFactory::connectToBrowser($socket, []); //Browser 
                 $this->created = false;
             } catch (\HeadlessChromium\Exception\BrowserConnectionFailed $e) {
                 Log::channel('browser')->warning('Ошибка подключения. ID потока: '.$params['thread_id'].' Сообщение:' .$e->getMessage());
@@ -244,8 +251,9 @@ class HeadlessBrowserWrapper
             try {
                 if (!$browser) {                
                     $factory           = new BrowserFactory($config['browser_bin']);
-                    $browser           = $factory->createBrowser($options);
-
+                    $browser           = $factory->createBrowser($options); //ProcessAwareBrowser - a Browser instance to interact with the new chrome process
+                    $pid = $browser->getPID();
+                    dump("PID :".$pid);
                     //$this->process     = $factory->getBrowserProcess();
                     file_put_contents($this->socketFile, $browser->getSocketUri());
                     //$this->commandLine = $browser->getCommandLine();
@@ -253,10 +261,12 @@ class HeadlessBrowserWrapper
                 }
             } catch (\Exception $ex) {
                 $errorMessage = 'Ошибка запуска браузера: ' . $ex->getMessage();
-                // dump($ex->getTraceAsString());
+                dump($ex->getMessage());
                 if (!empty($params['thread_id']))
                 {
-                    self::checkHangingProcess($params['thread_id'], $params['user_data_dir']);
+                    dump('Checkhanging');
+                    dump($this->userDirectory);
+                    self::checkHangingProcess($params['thread_id'], $this->userDirectory);
                 }
                 throw new BrowserFailedException($errorMessage, $ex->getCode(), 
                     $this->process, $ex);
