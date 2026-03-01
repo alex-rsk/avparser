@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Console\Command;
 use App\Models\{SearchQuery, ParserTask};
 use App\Services\ParserPool;
@@ -13,7 +14,7 @@ class RunParserCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'parser:run';
+    protected $signature = 'parser:run {parser_task_id}';
 
     /**
      * The console command description.
@@ -26,14 +27,18 @@ class RunParserCommand extends Command
      * Execute the console command.
      */
     public function handle()
-    {
-        $pool = ParserPool::getInstance();
-        $runningTasks = $pool->getActualProcessesCount();
+    {        
+        $ptId = $this->argument('parser_task_id');
+        Log::channel('daily')->debug('PT ID '.$ptId);
+        $parserTask = ParserTask::find($ptId);
+        if (is_null($parserTask)) {
+            Log::channel('daily')->debug('Parser task NF');
+            return;
+        }
 
-        dump('Задач запушено '.$runningTasks);
-
-        $pTask = ParserTask::first();
-        $pool->addBrowserInstance($pTask);
+        Log::channel('daily')->debug('Running task '.$ptId);
+        $pool = ParserPool::getInstance();  
+        $pool->addBrowserInstance($parserTask);
 
     }
 }

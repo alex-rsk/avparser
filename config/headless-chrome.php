@@ -9,5 +9,5 @@ return [
     'first_load_timeout_ms' => 30000,
     'load_timeout_ms' => 15000,
     'scroll_sweep' => 100,
-    'max_instances' => 5
+    'max_instances' => 3
 ];

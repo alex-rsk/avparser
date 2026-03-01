@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Services;
 
@@ -6,14 +6,15 @@ use Illuminate\Support\Facades\Log;
 use App\Models\{ParserTask, Settings};
 use App\Services\Exceptions\TooManyInstancesException;
 use App\Services\ParserService;
+use Symfony\Component\Process\Process;
 
 
-class ParserPool 
-{   
+class ParserPool
+{
     private static array $tasks = [];
 
     private static $instance =  null;
-    
+
     public static function getInstance()
     {
         if (!self::$instance) {
@@ -43,7 +44,7 @@ class ParserPool
                 Log::channel('daily')->warning('Process pid is empty, process task ID: '.$parserTask->id);
             }
         }
-        
+
     }
 
 
@@ -52,7 +53,7 @@ class ParserPool
         return self::$tasks;
     }
 
-    
+
     public function getActualProcessesCount()
     {
         $config = config('headless-chrome');
@@ -72,11 +73,15 @@ class ParserPool
         $browserGrep = '['.substr($browser,0,1).']'.substr($browser,1);
         //$checkCommand = 'ps -eaf | grep "'.$browserGrep.'.*thread-id" | awk \'$1 ~ /./ {print $2}\'';
         $cmdCount = 'ps -eaf | grep "'.$browserGrep.'.*thread-id" | awk \'$1 ~ /./ {print $2}\' | wc -l';
-        exec($cmdCount, $output);
-        if ($output) {
-            return (int) $output;
+        $process = Process::fromShellCommandline($cmdCount);
+
+        $process->run();
+        if (!$process->isSuccessful()) {
+            \Log::error('Process monitor failed: ' . $process->getErrorOutput());
+            return 0;
         }
-        return 0;
+
+        return (int)trim($process->getOutput());
     }
 
     public function addBrowserInstance(ParserTask $parserTask) : ?int
@@ -89,7 +94,7 @@ class ParserPool
             if ($instCount >= $maxInstances) {
                 throw new TooManyInstancesException();
             }
-            
+
             if (isset(self::$tasks[$parserTask->searchQuery->query_text])) {
                 return $parserTask->process_pid;
             }
@@ -99,8 +104,8 @@ class ParserPool
             }
 
             self::$tasks[$parserTask->searchQuery->query_text] = $parserTask;
-
-            $ps = new ParserService();
+            Log::channel('browser')->debug('Here');
+            $ps = new ParserService($parserTask->searchQuery->id);
             $ps->run($parserTask);
             return $parserTask->process_pid;
 
@@ -118,7 +123,7 @@ class ParserPool
         if (isset($this->tasks[$parserTask->searchQuery->query_text])) {
             $pt = $this->tasks[$parserTask->searchQuery->query_text];
             if (!$pt instanceof ParserTask) {
-                throw new \Exception('Not a ParserTask object');   
+                throw new \Exception('Not a ParserTask object');
             }
             $cmd = 'kill -9 '.$pt->process_pid;
             shell_exec($cmd);
@@ -127,7 +132,7 @@ class ParserPool
             $pt->save();
             unset($this->tasks[$parserTask->searchQuery->query_text]);
         }
-        
+
     }
-    
+
 }

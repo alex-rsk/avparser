@@ -9,8 +9,11 @@ use HeadlessChromium\Page;
 use App\Models\{Ad, AdView, AdReview, SearchQuery, ParserTask} ;
 use HeadlessChromium\Dom\Selector\CssSelector;
 
-class ParserService 
+class ParserService
 {
+    const LOG_PREFIX = 'parser_';
+    const ALLOWED_LEVELS = ['debug', 'warning', 'error', 'info'];
+
 
     private ParserTask $task;
 
@@ -29,37 +32,63 @@ class ParserService
     public function __construct(int $instanceNumber = 1, ?string $proxy = null)
     {
         $this->instanceNumber = $instanceNumber;
-        
-        $this->portNumber = intval(config('headless-chrome.default_debug_port')) + $this->instanceNumber - 1;  
-       
+
+        $this->portNumber = intval(config('headless-chrome.default_debug_port')) + $this->instanceNumber - 1;
+
         if (!empty($proxy)) {
             $this->proxy = $proxy;
         }
     }
 
-
-    private function log(mixed $message, string $level = 'debug') {
-
-        if (is_array($message) || is_object($message)) {
-            $message = json_encode($message, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT, 3);
+    /*
+    * Write a message to a log file.
+    *
+    * @param mixed  $message    Log message; arrays are JSON-encoded with pretty-print
+    * @param string $level      Severity level: debug | warning | error | info
+    * @param array  $data       Additional context data
+    *
+    * @throws \InvalidArgumentException If an unsupported log level is provided
+    */
+    private function log( mixed $message, string $level='debug', array $data = []): void
+    {
+        $index = $this->instanceNumber;
+        if (!in_array($level, self::ALLOWED_LEVELS, strict: true)) {
+            throw new \InvalidArgumentException(sprintf(
+                'Invalid log level "%s". Allowed levels are: %s.',
+                $level,
+                implode(', ', self::ALLOWED_LEVELS)
+            ));
         }
 
-        Log::channel('browser')->$level($message);
-    }
-    
+        if (is_array($message)) {
+            $message = json_encode($message, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
 
-    public function getPortNumber() : int 
+        $filename = storage_path('logs/' . self::LOG_PREFIX . $index . '.log');
+
+        $entry = sprintf(
+            "[%s] [%s] %s%s",
+            now()->toDateTimeString(),
+            strtoupper($level),
+            $message,
+            !empty($data) ? PHP_EOL . 'Context: ' . json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : ''
+        );
+
+        file_put_contents($filename, $entry . PHP_EOL, FILE_APPEND | LOCK_EX);
+    }
+
+    public function getPortNumber() : int
     {
         return $this->portNumber;
     }
 
-    private function initBrowser() 
+    private function initBrowser()
     {
         $params            = [
             //путь к библиотеке скриптов
             'scripts'               => resource_path('js/headless-scripts'),
             // режим без GUI
-            'headless'              => true,
+            'headless'              => false,
             //строка юзерагента
             'user_agent'            => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.80 Safari/537.36',
             //имя инстанса
@@ -68,7 +97,8 @@ class ParserService
             // 'url'                   => $url,
             //порт для связи с браузером
             'debug_port'            => $this->portNumber,// + $this->inst - 1,
-            //очистка кэша скрипта    
+            //'debug_output'          => storage_path("browser_debug_{$this->instanceNumber}.log"),
+            //очистка кэша скрипта
             'clear_script_cache'    => true,
             //каждый раз стартовать принудительно новый инстанс
             'fresh_start'           => true,
@@ -77,7 +107,7 @@ class ParserService
             //Отключить уведомления
             'disable_notifications' => true,
             //скрипт предзагрузки
-            'preload_script'         => null,
+            'preload_script'         => 'preload',
             //ID потока
             'thread_id'             => 'thread-id-'.$this->instanceNumber,
             //прокси
@@ -87,7 +117,7 @@ class ParserService
         if (!empty($this->proxy)) {
             $params['proxy'] = $this->proxy;
         }
- 
+
         return HeadlessBrowserWrapper::factory($params);
         sleep(5);
         //$this->browser->startRequestIntercept();
@@ -95,17 +125,36 @@ class ParserService
 
 
     private function search(string $query) {
-        $searchSelector = '#bx_search > div.index-suggest-Me4w_ > div > div > label > div > div > div > input';
-        $tab = $this->browser->getTab(0);
+        $searchSelector = 'input[data-marker="search-form/suggest/input"]';
         sleep(random_int(1, 3));
-        $tab->mouse()->find($searchSelector)->click();
+        $this->page = $this->browser->getTab(0);
+        try {
+            $this->log('Waiting for search element...');
+            $attempts = 10;
+            $searchPresent = 0;
+            while ($attempts-- > 0 && $searchPresent == 0) {
+                $this->log('Attempt '.$attempts);
+                $searchPresent = $this->browser->runScriptOnPage($this->page, 'check_element_presence', [
+                    'selector' => $searchSelector, 'xpath' => false], 10);
+                $this->log($searchPresent);
+                sleep(1);
+            }
+        }
+        catch (\Exception $ex)
+        {
+            $this->log('Error awaiting search element: '.$ex->getMessage());
+            return;
+        }
 
-        $this->emulateHumanType($tab, $query, 3);
+
+        $this->page->mouse()->find($searchSelector)->click();
+
+        $this->emulateHumanType($this->page, $query, 3);
         sleep(random_int(1, 3));
-        $tab->keyboard()->typeRawKey("\r");
+        $this->page->keyboard()->typeRawKey("\r");
         sleep(random_int(4, 6));
     }
-    
+
     private function check404() : bool
     {
         $is404 = $this->browser->runScriptOnPage($this->page, 'avito/check_404');
@@ -118,7 +167,7 @@ class ParserService
         try {
             $price = $this->browser->runScriptOnPage($this->page, 'get_element_content', ['elementSelector' => $selector, 'Xpath' => true], 10);
         }
-        catch (\Exception $ex) 
+        catch (\Exception $ex)
         {
             $this->log('Error running script getPrice: '.$ex->getMessage());
             $price = 0;
@@ -153,12 +202,12 @@ class ParserService
         return [ intval(preg_replace('~\D~', '',  $todayViews)) ?? null,  intval($totalViews) ?? null];
     }
 
-    private function getTotalPages() : ?int 
+    private function getTotalPages() : ?int
     {
         $selector = '//ul[@data-marker="pagination-button"]/li[position()=last()-1]';
         try {
             $count = $this->browser->runScript(0, 'get_element_content', ['elementSelector' => $selector, 'Xpath' => true], 10);
-        } 
+        }
         catch (\Exception $ex)
         {
             $this->log('Exception getting total pages script:'.$ex->getMessage());
@@ -171,16 +220,16 @@ class ParserService
     private function emulateHumanType(Page $tab,  string $text, int $gaps = 1) {
         $length = mb_strlen($text);
         $gapPositions = [];
-        $previousGap = 0;    
+        $previousGap = 0;
         for ($i = 0; $i < $gaps; $i ++) {
             $nextGap =   random_int($previousGap+1, $length/2+$previousGap);
             $gapPositions[] = $nextGap-$previousGap;
             $previousGap = $nextGap;
         }
-        
+
         $pieces  = [];
         $ppos = 0;
-     
+
         foreach ($gapPositions as $gp) {
             $pieces[] = ['text' => mb_substr($text, $ppos, $gp), 'delay' => random_int(100, 200) ];
             $ppos += $gp;
@@ -197,14 +246,14 @@ class ParserService
     }
 
     private function collectAds(int $page = 1) : ?array
-    {        
+    {
         if ($page > 1) {
             $this->log("Jump to page ".$page);
             $pageSelector = 'a[data-value="'.$page.'"]';
             $currentUrl = $this->browser->runScript(0, 'get_current_url', []);
             $urlParts = parse_url($currentUrl);
             $url = $urlParts['scheme'] . '://' . $urlParts['host'] . $urlParts['path'];
-            
+
             $queryParts = preg_split('~[\?\&]~', $urlParts['query']);
             $params = [];
             foreach ($queryParts as $part) {
@@ -216,7 +265,21 @@ class ParserService
             $newUrl = $url . '?' . http_build_query($newParams);
             $this->log("New URL:".$newUrl);
             $this->browser->navigateTab(0, $newUrl);
-            sleep(5);
+            sleep(3);
+            try {
+                $attempts = 10;
+                while ($this->browser->getTab(0)->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
+                    $this->processCaptcha();
+                    sleep(5);
+                }
+
+                if ($attempts == 0) {
+                    $this->log('Can\t solve captcha  ');
+                    $this->browser->close();
+                }
+            } catch (\Throwable $th) {
+                $this->log('No captcha!');
+            }
         }
 
         $itemsSelector =  '//div[@data-marker="item"]//h2/a[@itemprop="url"]';
@@ -232,7 +295,7 @@ class ParserService
             $this->log('no items', 'warning');
             return [];
         }
-    
+
     }
 
     private function getRatings(string $title) : array
@@ -246,7 +309,7 @@ class ParserService
 
         sleep(2);
         $ratingsSelector = 'a[data-marker="rating-caption/rating"]';
-        //$this->browser->getTab(0)->mouse()->find($ratingsSelector)->click();        
+        //$this->browser->getTab(0)->mouse()->find($ratingsSelector)->click();
         $newURL = $this->url.'#open-reviews-list';
 
         try {
@@ -257,7 +320,7 @@ class ParserService
             $this->log('No signal about readiness to navigation', 'warning');
         }
 
-        $reviewsModalSelector = 'div[role="dialog"]'; 
+        $reviewsModalSelector = 'div[role="dialog"]';
 
         try {
             $this->page->waitUntilContainsElement(new CssSelector($reviewsModalSelector), 10 * 10**3);
@@ -277,17 +340,17 @@ class ParserService
         catch (\Exception $ex)
         {
             $this->log('Error executing script : '.$ex->getMessage());
-            $totalReviews = 0;            
+            $totalReviews = 0;
         }
 
-        dump('Total reviews:'.$totalReviews);
+        $this->log('Total reviews:'.$totalReviews);
 
         try {
             list($modalX, $modalY) = $this->browser->runScriptOnPage($this->page, 'get_element_coords', [
                 'elementSelector' => $reviewsModalSelector,
                 'Xpath' => false
             ], 10);
-                
+
 
             if ($totalReviews > 25) {
                 $this->page->mouse()->move(500, 300 )->scrollDown(100);
@@ -313,7 +376,7 @@ class ParserService
         try {
             $reviews = $this->browser->runScriptOnPage($this->page, 'avito/get_reviews', [], 10);
         }
-        catch (\Exception $ex) 
+        catch (\Exception $ex)
         {
             $this->log('Error executing script: '.$ex->getMessage());
             $reviews = 0;
@@ -321,7 +384,7 @@ class ParserService
 
         if ($reviews) {
             $result['reviews'] = $reviews;
-        }        
+        }
 
         $result['average_rating'] = floatval(str_replace(',', '.', $avgRating));
 
@@ -331,16 +394,16 @@ class ParserService
 
     private function getAdInfo(string $adUrl, string $title)  : ?array
     {
-        try {            
+        try {
             if ($this->check404()) {
                 $this->page->close();
-                dump("Closing");
+                $this->log("Closing");
                 return null;
             }
             $price = $this->getPrice();
             list ($today, $total) = $this->getViews();
             $ratings = $this->getRatings($title);
-            
+
 
             $filteredReviews = array_filter($ratings['reviews'], function ($review) use ($title) {
                 return trim($review['title']) == trim($title);
@@ -358,15 +421,15 @@ class ParserService
                 'reviews' => $filteredReviews,
                 'average_rating' => $ratings['average_rating']
             ];
-        } 
-        catch (\Exception $ex) { 
+        }
+        catch (\Exception $ex) {
             $this->log('Error getAdInfo: '.$ex->getMessage().' '.$ex->getTraceAsString(), 'warning');
             return null;
         }
     }
 
-    public function processAdPage(Ad $ad)
-    {  
+    public function processAdPage($ad)
+    {
         $this->url = 'https://www.avito.ru'.$ad->clean_url;
         $this->page = $this->browser->openTab($this->url);
         $adInfo  = $this->getAdInfo($ad->clean_url, $ad->title);
@@ -374,11 +437,11 @@ class ParserService
         if (is_null($adInfo)) {
             $this->log('Ad info is empty: '.$ad->id, 'warning');
             $ad->status = 'error';
-            $ad->save(); 
+            $ad->save();
             return;
         }
 
-        //Log::channel('browser')->debug($adInfo);
+        $this->log(print_r($adInfo, true));
         $ad->update([
             'status' => 'visited',
             'title' => $ad->title,
@@ -388,12 +451,11 @@ class ParserService
             'created_at' => now(),
         ]);
 
-        //dump($adInfo);
 
         AdView::upsert(
-            [ 
+            [
                 'ad_id' => $ad->id,
-                'plus_views'  => $adInfo['today_views'], 
+                'plus_views'  => $adInfo['today_views'],
                 'total_views' => $adInfo['total_views'],
             ],
             ['id'],
@@ -412,7 +474,7 @@ class ParserService
 
             $reviewObj->save();
         }
-            
+
         $rands = array_fill(0, random_int(2, 5), [ 'x' => random_int(100, 500), 'y' => random_int(100, 500)]);
 
         foreach ($rands as $rand) {
@@ -421,14 +483,14 @@ class ParserService
             sleep(random_int(2, 3));
         }
 
-        dump("Closing page");
+        $this->log("Closing page");
         $this->page->close();
     }
 
     private function processCaptcha() {
-        echo "Captcha detected!".PHP_EOL;
+        $this->log("Captcha detected!");
         $this->browser->getTab(0)->mouse()->find('button')->click();
-        sleep(15);                
+        sleep(15);
         //Найти элемент div.geetest_bg - это подложка. Картинка в свойстве background-image
         $geeBgCoords = $this->browser->runScript(0, 'get_element_coords', [
             'elementSelector' => 'div.geetest_bg',
@@ -456,8 +518,16 @@ class ParserService
         $this->log("Geetest Button coords");
         $this->log($geeButtonCoords);
 
+        $geeArrowCoords =  $this->browser->runScript(0, 'get_element_coords', params:[
+            'elementSelector' => 'div.geetest_arrow',
+            'Xpath' => false
+        ]);
+
+        $this->log("Geetest Arrow coords");
+        $this->log($geeArrowCoords);
+
         if (!($geeBgCoords && $geeSliceCoords && $geeButtonCoords)) {
-            throw new \Exception("Geetest elements not found!");                    
+            throw new \Exception("Geetest elements not found!");
         }
 
         $puzzleHeight = 80;
@@ -467,7 +537,7 @@ class ParserService
         $this->log("Puzzle relative Y: " . $puzzleRelativeTop);
 
         $cssUrlRegexp = '~url\([\"\']([^\)]+)[\"\']\)~';
-        
+
         //Get puzzle image
         $imageSmall =$this->browser->runScript(0, 'get_element_bgimage', [
             'elementSelector' => 'div.geetest_slice_bg',
@@ -496,10 +566,10 @@ class ParserService
         $this->log("Downloading..");
         $smDestFilename = base_path('capsolver/input/small.png');
         HelperService::downloadFile($smallUrl, $smDestFilename);
-    
+
         $lgDestFilename = base_path('capsolver/input/large.png');
         HelperService::downloadFile($largeUrl, $lgDestFilename);
-                
+
         $this->log('Captcha background: '. $imageLarge);
 
         $solverCmd = base_path('dist/capsolver'). ' ' . $smDestFilename . ' ' . $lgDestFilename . ' ' . $puzzleRelativeTop;
@@ -510,24 +580,24 @@ class ParserService
         if (!is_numeric($cleanedOutput)) {
             $this->log('Dirty output: '.$cleanedOutput, 'warning');
         }
-        
+
         //X- координата места для пазла, относительно X- координаты подложки
         $targetX = intval($cleanedOutput);
-        //$absoluteTargetX = 
+        //$absoluteTargetX =
         $this->log('X-coordinate :' .$targetX);
-        
+
         $steps = random_int(4, 8);
         $initialOffsetX = random_int(5, 10);
         $initialOffsetY = random_int(2, 10);
         $startX = intval($geeButtonCoords[0])+$initialOffsetX;
-        $startY = intval($geeButtonCoords[1])-80 ; //80 is magic number
-        
-        
+        $startY = intval($geeButtonCoords[1])+$initialOffsetY - 80 ; //80 is magic number
+
+
         $this->log('Start X:'. $startX.' Y:'.$startY);
         sleep(random_int(2,5));
         $this->log("Pointing, steps " . $steps);
-        $this->browser->getTab(0)->mouse()->move($startX, $startY, ['steps' => $steps])->press(); 
-        
+        $this->browser->getTab(0)->mouse()->move($startX, $startY, ['steps' => $steps])->press();
+
         sleep(random_int(2,5));
         //Test
         $distance = $targetX;
@@ -546,8 +616,8 @@ class ParserService
             ->limit(10)->get();
 
         foreach ($ads as $ad) {
-            Log::channel('browser')->debug('Advertisement id: '.$ad->id);
-            $this->processAdPage($ad);       
+            $this->log('Advertisement id: '.$ad->id);
+            $this->processAdPage($ad);
         }
     }
 
@@ -562,15 +632,27 @@ class ParserService
         $query = $task->searchQuery;
 
         $this->browser = $this->initBrowser();
-    
+
         $this->browser->navigateTab(0, 'https://avito.ru/');
         sleep(5);
 
         try {
-            if ($this->browser->getTab(0)->mouse()->find('#geetest_captcha')) {                
+            $attempts = 10;
+            while ($this->browser->getTab(0)->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
                 $this->processCaptcha();
-                return;
+                sleep(5);
             }
+
+            if ($attempts == 0) {
+                $this->log('Can\t solve captcha  ');
+                $this->browser->close();
+            }
+            $task->stage = 'new';
+            $task->status = 'active';
+            $task->save();
+            $this->browser->close();
+            return;
+
         } catch (\Throwable $th) {
             $this->log('No captcha', 'debug');
         }
@@ -586,22 +668,28 @@ class ParserService
             $totalPages = 3;
         }
 
+        $task->stage = 'ads';
+        $task->save();
+
         for ($i=1 ; $i < $totalPages; $i++ ) {
             $items = $this->collectAds($i);
             $this->log('Parsed '.count($items).' ads');
             $query->update(['observed_at' => now(), 'total_pages' => $totalPages,]);
 
             $preparedItems = Ad::prepareInsertData($items, $query->id);
-            
+
             Ad::insert($preparedItems);
             $this->log('Page '.($i+1).' processed');
             sleep(random_int(2, 4));
         }
- 
+
         $this->log('STEP 2 >>>> Processing ads');
         $this->processAds($query);
         $this->log('STEP 2 >>>> Done');
+
+        $task->stage = 'done';
+        $task->save();
         $this->browser->close();
-        
+
     }
 }

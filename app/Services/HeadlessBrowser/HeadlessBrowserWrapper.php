@@ -21,7 +21,7 @@ class HeadlessBrowserWrapper
     /**
      * Загрузчик скриптов
      * 
-     * @var \Components\GHC\ScriptLoader
+     * @var App\Services\HeadlessBrowser\ScriptLoader
      */
     protected $scriptLoader = null;
     
@@ -184,7 +184,7 @@ class HeadlessBrowserWrapper
 
         if (!empty($profileDir)) {
             
-            Log::channel('browser')->debug("Trying to remove socket file");
+            Log::channel('browser')->debug("Trying to remove socket file and singleton locks");
             $filesToDelete = [
                 $profileDir.DIRECTORY_SEPARATOR.'socket',
                 $profileDir.DIRECTORY_SEPARATOR.'SingletonLock',
@@ -330,6 +330,7 @@ class HeadlessBrowserWrapper
             '--remote-debugging-port=' . $debugPort,
             '--user-agent=' . $params['user_agent'],
             // '--disable-gl-drawing-for-tests',  //TODO раскомментировать, когда не нужны будут тестовые скриншоты */
+            '--disable-geolocation',
             '--crash-on-hang-threads=UI:120,IO:120',
             '--homedir='.$this->userDirectory,
             '--disable-features=TranslateUI, InfiniteSessionRestore',
@@ -591,8 +592,8 @@ class HeadlessBrowserWrapper
      * 
      * @return mixed
      */
-    public function runScript($number = 0, $script, $params = [], 
-        $timeout = 5, $waitForReload = false)
+    public function runScript(int $number = 0, string $script, array $params = [], 
+        int $timeout = 5, bool $waitForReload = false)
     {
         Log::channel('browser')->debug('Запуск скрипта '.$script);
         $number = $number ?? $this->currentTab;
