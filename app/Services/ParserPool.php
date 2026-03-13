@@ -27,7 +27,9 @@ class ParserPool
     {
 
         //Актуалиазация запущенных экземпляров
-        $parserTasks = ParserTask::query()->whereNot('status', 'stopped')->get();
+   /*
+        $parserTasks = ParserTask::query()->whereNot('status', 'stopped')
+            ->where('process_pid', '>', 0)->get();
         foreach ($parserTasks as $parserTask) {
             if (!empty($parserTask->process_pid)) {
                 $cmd = 'ps h -o pid -p '.$parserTask->process_pid;
@@ -37,14 +39,12 @@ class ParserPool
                     $parserTask->status = 'paused';
                     $parserTask->process_pid = 0;
                     $parserTask->save();
-                } else {
-                    self::$tasks[$parserTask->searchQuery->query_text] = $parserTask;
-                }
+                } 
             } else {
                 Log::channel('daily')->warning('Process pid is empty, process task ID: '.$parserTask->id);
             }
         }
-
+        */
     }
 
 
@@ -97,6 +97,8 @@ class ParserPool
 
             if (isset(self::$tasks[$parserTask->searchQuery->query_text])) {
                 return $parserTask->process_pid;
+            } else {
+                self::$tasks[$parserTask->searchQuery->query_text] = $parserTask;
             }
 
             if ($parserTask->status == 'active') {
@@ -104,7 +106,7 @@ class ParserPool
             }
 
             self::$tasks[$parserTask->searchQuery->query_text] = $parserTask;
-            Log::channel('browser')->debug('Here');
+            Log::channel('browser')->debug('Create new parser service');
             $ps = new ParserService($parserTask->searchQuery->id);
             $ps->run($parserTask);
             return $parserTask->process_pid;

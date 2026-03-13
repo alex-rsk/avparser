@@ -324,7 +324,7 @@ class HeadlessBrowserWrapper
     protected function prepareFlags($params)
     {
         $config = config('headless-chrome');
-        $debugPort       = $params['debug_port'] ?? config('headless-chrome.default_debug_port');
+        $debugPort       = 9222;//$params['debug_port'] ?? config('headless-chrome.default_debug_port');
         //Описание опций запуска: https://peter.sh/experiments/chromium-command-line-switches/
         $customFlags = [
             '--remote-debugging-port=' . $debugPort,
@@ -336,15 +336,21 @@ class HeadlessBrowserWrapper
             '--disable-features=TranslateUI, InfiniteSessionRestore',
             '--disable-restore-session-state',
             '--noerrdialogs',
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-crashpad',
+            '--no-report-upload',
+            '--disable-setuid-sandbox',
+            '--disable-crash-reporter',
+            '--no-crash-upload',
             //'--blink-settings=imagesEnabled=false', //отключение картинок
             '--window-size='.$config['viewport'],
         ];
+        Log::debug(print_r($customFlags, true));
         if (isset($params['disable_notifications'])) {
             $customFlags[]= '--disable-notifications';
         }
-        if (isset($params['no_sandbox'])) {
-            $customFlags[]='--no-sandbox';
-        }
+
         if (isset($params['thread_id'])) {
             $customFlags[]='--thread-id-'.$params['thread_id'];
         }
@@ -361,8 +367,8 @@ class HeadlessBrowserWrapper
         $options = [
             'headless'    => $params['headless'] ?? true,
             'userDataDir' => $this->userDirectory,
-            'keepAlive'   => true,
-            'customFlags' => $customFlags
+            'keepAlive'   => true,            
+            'customFlags' => $customFlags            
         ];
 
         if (isset($params['debug_output'])) {

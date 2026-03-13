@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ParserTasks\Schemas;
 
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
 use Filament\Schemas\Schema;
 
 class ParserTaskForm
@@ -13,15 +14,13 @@ class ParserTaskForm
             ->components([
                 TextInput::make('title')
                     ->required(),
-                TextInput::make('search_query_id')
-                    ->required()
-                    ->numeric(),
+                Select::make('search_query_id')
+                    ->relationship('searchQuery', 'query_text')
+                    ->required(),
                 TextInput::make('priority')
                     ->required()
                     ->numeric()
                     ->default(1),
-                TextInput::make('process_pid')
-                    ->numeric(),
             ]);
     }
 }

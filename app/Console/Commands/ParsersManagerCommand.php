@@ -10,7 +10,7 @@ use Symfony\Component\Process\Process;
 
 class ParsersManagerCommand extends Command
 {
-    const EXECUTING_TOO_LONG_MIN = 1440;
+    const EXECUTING_TOO_LONG_MIN = 20;
     /**
      * The name and signature of the console command.
      *
@@ -32,20 +32,21 @@ class ParsersManagerCommand extends Command
     {
         $pool = ParserPool::getInstance();
         $runningTasks = $pool->getActualProcessesCount();
-        $capacity = config('headless-chrome.max_instances');
-        $limit = 1;//$capacity - $runningTasks;
+        $capacity = 1;// config('headless-chrome.max_instances');
+        $limit =  $capacity - $runningTasks;
 
         if ($limit <= 0) {
             Log::channel('daily')->debug('No place for tasks');
             return ;
         }
+
+        $timeLimit = 10*60;
         // Прибить задачи, которые зависли в промежуточном статусе если они выполняются слишком долго        
-        $tooLongExecuting = ParserTask::query()
-            ->where('status', 'active')
+        $tooLongExecuting = ParserTask::query()->where('status', 'active')
             ->whereNotIn('stage', ['new', 'done'])
-            ->whereRaw("DATEDIFF('".date('Y-m-d H:i:s')."', updated_at) < ".self::EXECUTING_TOO_LONG_MIN)->get();
+            ->whereRaw("DATEDIFF('".date('Y-m-d H:i:s')."', updated_at) > $timeLimit")->get();
 
-
+        
         // 1. Получить PID
         // 2. Прибить задачу (этот крон должен быть запущен с рут-привилегиями)
         $idsToDelete = [];
@@ -70,15 +71,19 @@ class ParsersManagerCommand extends Command
         }
 
         // Получить уже запущенные задачи
-        $runningTasks = ParserTask::query()->select('search_query_id')->where('stage','done')
+        $runningTasks = ParserTask::query()->select('search_query_id')->whereIn('stage',['new', 'pages', 'ads'])
+            ->whereNot('status', 'error')
             ->get()->pluck('search_query_id')->toArray();
 
         Log::channel('daily')->debug('Задач запущено:'.count($runningTasks));
 
         //Получить задачи, которые ещё не запущены
         $sqIds =  SearchQuery::query()->select('id')->whereNotIn('id', $runningTasks)
+            ->orderBy('updated_at')
             ->limit($limit)->get()->pluck('id')->toArray();
-            
+
+        Log::channel('daily')->debug('Tasks for run:'.print_r($sqIds, true));
+
         if (empty($sqIds)) {
             Log::channel('daily')->debug("No search queries");
             return;
@@ -111,6 +116,7 @@ class ParsersManagerCommand extends Command
 
             
             $cmd = 'nohup php artisan parser:run '.$pTask->id.' > /dev/null 2>/dev/null & echo $!';
+            Log::channel('daily')->debug($cmd);
             //$process = Process::fromShellCommandLine('nohup php artisan parser:run '.$pTask->id.' > /dev/null 2>/dev/null &');
             //$process->setTimeout(3600);
             //$process->start();

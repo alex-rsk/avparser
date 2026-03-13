@@ -97,7 +97,7 @@ class ParserService
             // 'url'                   => $url,
             //порт для связи с браузером
             'debug_port'            => $this->portNumber,// + $this->inst - 1,
-            //'debug_output'          => storage_path("browser_debug_{$this->instanceNumber}.log"),
+            'debug_output'          => logger(),
             //очистка кэша скрипта
             'clear_script_cache'    => true,
             //каждый раз стартовать принудительно новый инстанс
@@ -138,6 +138,10 @@ class ParserService
                     'selector' => $searchSelector, 'xpath' => false], 10);
                 $this->log($searchPresent);
                 sleep(1);
+            }
+
+            if ($attempts == 0) {
+                $this->browser->close();
             }
         }
         catch (\Exception $ex)
@@ -265,21 +269,23 @@ class ParserService
             $newUrl = $url . '?' . http_build_query($newParams);
             $this->log("New URL:".$newUrl);
             $this->browser->navigateTab(0, $newUrl);
-            sleep(3);
-            try {
-                $attempts = 10;
-                while ($this->browser->getTab(0)->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
-                    $this->processCaptcha();
-                    sleep(5);
-                }
-
-                if ($attempts == 0) {
-                    $this->log('Can\t solve captcha  ');
-                    $this->browser->close();
-                }
-            } catch (\Throwable $th) {
-                $this->log('No captcha!');
+            sleep(5);         
+        }
+        $this->log('Waiting captcha');
+        try {
+            $attempts = 10;
+            $pageObj = $this->browser->getTab(0);
+            while ($pageObj->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
+                $this->processCaptcha($pageObj);
+                sleep(5);
             }
+
+            if ($attempts == 0) {
+                $this->log('Can\t solve captcha  ');
+                $this->browser->close();
+            }
+        } catch (\Throwable $th) {
+            $this->log('No captcha!');
         }
 
         $itemsSelector =  '//div[@data-marker="item"]//h2/a[@itemprop="url"]';
@@ -432,6 +438,24 @@ class ParserService
     {
         $this->url = 'https://www.avito.ru'.$ad->clean_url;
         $this->page = $this->browser->openTab($this->url);
+
+        $this->log('Process ads page');
+        try {
+            $attempts = 10;            
+            while ($this->page->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
+                $this->processCaptcha($this->page);
+                sleep(5);
+            }
+
+            if ($attempts == 0) {
+                $this->log('Can\t solve captcha  ');
+                $this->browser->close();
+            }
+        } catch (\Throwable $th) {
+            $this->log('No captcha!');
+        }
+
+        
         $adInfo  = $this->getAdInfo($ad->clean_url, $ad->title);
 
         if (is_null($adInfo)) {
@@ -487,12 +511,13 @@ class ParserService
         $this->page->close();
     }
 
-    private function processCaptcha() {
+    private function processCaptcha(Page $page) {
         $this->log("Captcha detected!");
-        $this->browser->getTab(0)->mouse()->find('button')->click();
-        sleep(15);
+        sleep(5);
+        $page->mouse()->find('button')->click();
+        sleep(5);
         //Найти элемент div.geetest_bg - это подложка. Картинка в свойстве background-image
-        $geeBgCoords = $this->browser->runScript(0, 'get_element_coords', [
+        $geeBgCoords = $this->browser->runScriptOnPage($page, 'get_element_coords', [
             'elementSelector' => 'div.geetest_bg',
             'Xpath' => false
         ]);
@@ -501,7 +526,7 @@ class ParserService
         $this->log($geeBgCoords);
 
         //Найти элемент div.geetest_slice_bg - это пазл. Картинка в свойстве background-image getBoundingClientRect получит bbox
-        $geeSliceCoords = $this->browser->runScript(0, 'get_element_coords', [
+        $geeSliceCoords = $this->browser->runScriptOnPage($page, 'get_element_coords', [
             'elementSelector' => 'div.geetest_slice_bg',
             'Xpath' => false
         ]);
@@ -510,7 +535,7 @@ class ParserService
         $this->log($geeSliceCoords);
 
         //div.geetest_btn - это  ползунок. getBoundingClientRect()  - получит bbox
-        $geeButtonCoords = $this->browser->runScript(0, 'get_element_coords', [
+        $geeButtonCoords = $this->browser->runScriptOnPage($page, 'get_element_coords', [
             'elementSelector' => 'div.geetest_btn',
             'Xpath' => false
         ]);
@@ -518,7 +543,7 @@ class ParserService
         $this->log("Geetest Button coords");
         $this->log($geeButtonCoords);
 
-        $geeArrowCoords =  $this->browser->runScript(0, 'get_element_coords', params:[
+        $geeArrowCoords =  $this->browser->runScriptOnPage($page, 'get_element_coords', params:[
             'elementSelector' => 'div.geetest_arrow',
             'Xpath' => false
         ]);
@@ -530,6 +555,12 @@ class ParserService
             throw new \Exception("Geetest elements not found!");
         }
 
+        if (empty($geeBgCoords[0]) && empty($geeBgCoords[1])) {
+            $this->log('Captcha not detected');
+            sleep(2);
+            return;
+        }
+
         $puzzleHeight = 80;
         $puzzleWidth = 80;
 
@@ -539,19 +570,20 @@ class ParserService
         $cssUrlRegexp = '~url\([\"\']([^\)]+)[\"\']\)~';
 
         //Get puzzle image
-        $imageSmall =$this->browser->runScript(0, 'get_element_bgimage', [
+        $imageSmall =$this->browser->runScriptOnPage($page, 'get_element_bgimage', [
             'elementSelector' => 'div.geetest_slice_bg',
             'Xpath' => false
         ]);
-        $this->log('CSS for small:'.$imageSmall);
+        //$this->log('CSS for small:'.$imageSmall);
+
         $smallUrl = preg_match($cssUrlRegexp, $imageSmall, $matches) ? $matches[1] : null;
         if (!$smallUrl) {
             throw new \Exception("Can't parse puzzle image URL!");
         }
-        $this->log('Small URL: ' . $smallUrl);
+        //$this->log('Small URL: ' . $smallUrl);
 
         //Get background image
-        $imageLarge = $this->browser->runScript(0, 'get_element_bgimage', [
+        $imageLarge = $this->browser->runScriptOnPage($page, 'get_element_bgimage', [
             'elementSelector' => 'div.geetest_bg',
             'Xpath' => false
         ]);
@@ -590,20 +622,20 @@ class ParserService
         $initialOffsetX = random_int(5, 10);
         $initialOffsetY = random_int(2, 10);
         $startX = intval($geeButtonCoords[0])+$initialOffsetX;
-        $startY = intval($geeButtonCoords[1])+$initialOffsetY - 80 ; //80 is magic number
+        $startY = intval($geeButtonCoords[1])+$initialOffsetY ; //80 is magic number
 
 
         $this->log('Start X:'. $startX.' Y:'.$startY);
         sleep(random_int(2,5));
         $this->log("Pointing, steps " . $steps);
-        $this->browser->getTab(0)->mouse()->move($startX, $startY, ['steps' => $steps])->press();
+        $page->mouse()->move($startX, $startY, ['steps' => $steps])->press();
 
         sleep(random_int(2,5));
         //Test
         $distance = $targetX;
         $steps = random_int(4, 8);
         $this->log("Dragging");
-        $this->browser->getTab(0)->mouse()->move($startX + $distance, $startY, ['steps' => $steps])->release();
+        $page->mouse()->move($startX + $distance, $startY, ['steps' => $steps])->release();
 
     }
 
@@ -624,10 +656,12 @@ class ParserService
 
     public function run(ParserTask $task)
     {
+        /*
         if ($task->process_pid > 0 && HelperService::checkProcess($task->process_pid)) {
-            $this->log("Task is already running, query: " . $task->searchQuery->query_text . " PID: " . process_pid);
+            $this->log("Task is already running, query: " . $task->searchQuery->query_text . " PID: " . $task->process_pid);
             return;
         }
+        */
 
         $query = $task->searchQuery;
 
@@ -638,8 +672,9 @@ class ParserService
 
         try {
             $attempts = 10;
-            while ($this->browser->getTab(0)->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
-                $this->processCaptcha();
+            $pageObj = $this->browser->getTab(0);
+            while ($pageObj->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
+                $this->processCaptcha($pageObj);
                 sleep(5);
             }
 

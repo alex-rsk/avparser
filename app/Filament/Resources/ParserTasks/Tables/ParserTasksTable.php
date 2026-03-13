@@ -15,17 +15,18 @@ class ParserTasksTable
     {
         return $table
             ->columns([
-                TextColumn::make('title')
+                TextColumn::make('title')->label('Название')
                     ->searchable(),
                 TextColumn::make('searchQuery.query_text')
-                    ->label('Search Query')
+                    ->label('Поисковый запрос')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('priority')
+                TextColumn::make('priority')->label('Приоритет')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('process_pid')
-                    ->numeric()
+                TextColumn::make('status')->label('Статус')
+                    ->sortable(),
+                    TextColumn::make('stage')->label('Стадия')
                     ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
