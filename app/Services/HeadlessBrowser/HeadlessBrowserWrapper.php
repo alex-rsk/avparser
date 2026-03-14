@@ -629,7 +629,7 @@ class HeadlessBrowserWrapper
     {
         Log::channel('browser')->debug('runScriptOnPage Запуск скрипта '.$script);        
         $scriptSource = $this->scriptLoader->load($script, $params);
-
+        //Log::channel('browser')->debug($scriptSource);
         if (empty($scriptSource))
         {
             throw new \Exception('Скрипт '.$script.' не найден');

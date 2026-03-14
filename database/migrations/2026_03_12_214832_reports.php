@@ -11,7 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        //
+        Schema::create('reports', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedTinyInteger('downloaded')->default(0);
+            $table->string('from_date')->nullable();
+            $table->string('to_date')->nullable();
+            $table->unsignedInteger('search_query_id')->nullable();
+            $table->string('filename', 512);
+            $table->unsignedInteger('owner_id')->nullable();
+            $table->timestamps();
+        });
     }
 
     /**
@@ -19,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('reports');
     }
 };

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\{Log, DB};
 use HeadlessChromium\Page;
 use App\Models\{Ad, AdView, AdReview, SearchQuery, ParserTask} ;
 use HeadlessChromium\Dom\Selector\CssSelector;
+use HeadlessChromium\Dom\Selector\XPathSelector;
 
 class ParserService
 {
@@ -125,8 +126,24 @@ class ParserService
 
 
     private function search(string $query) {
+        $this->log('Checking captcha in search');
+        try {
+            $attempts = 10;            
+            while ($this->page->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
+                sleep(2);
+                $this->processCaptcha($this->page);
+                sleep(5);
+            }
+
+            if ($attempts == 0) {
+                $this->log('Can\t solve captcha  ');
+                $this->browser->close();
+            }
+        } catch (\Throwable $th) {
+            $this->log('No captcha!');
+        }
+
         $searchSelector = 'input[data-marker="search-form/suggest/input"]';
-        sleep(random_int(1, 3));
         $this->page = $this->browser->getTab(0);
         try {
             $this->log('Waiting for search element...');
@@ -137,7 +154,7 @@ class ParserService
                 $searchPresent = $this->browser->runScriptOnPage($this->page, 'check_element_presence', [
                     'selector' => $searchSelector, 'xpath' => false], 10);
                 $this->log($searchPresent);
-                sleep(1);
+                sleep(2);
             }
 
             if ($attempts == 0) {
@@ -155,8 +172,25 @@ class ParserService
 
         $this->emulateHumanType($this->page, $query, 3);
         sleep(random_int(1, 3));
+
         $this->page->keyboard()->typeRawKey("\r");
-        sleep(random_int(4, 6));
+        $this->log('Waiting captcha');
+        
+        try {
+            $attempts = 10;            
+            while ($this->page->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
+                sleep(2);
+                $this->processCaptcha($this->page);
+                sleep(5);
+            }
+
+            if ($attempts == 0) {
+                $this->log('Can\t solve captcha  ');
+                $this->browser->close();
+            }
+        } catch (\Throwable $th) {
+            $this->log('No captcha!');
+        }
     }
 
     private function check404() : bool
@@ -209,6 +243,16 @@ class ParserService
     private function getTotalPages() : ?int
     {
         $selector = '//ul[@data-marker="pagination-button"]/li[position()=last()-1]';
+        $this->page = $this->browser->getTab(0);
+        try {
+            $this->page->waitUntilContainsElement(new XPathSelector($selector));
+        }
+        catch (\Exception $ex)
+        {
+            $this->log('Error waiting until pages element reveals: '.$ex->getMessage());
+            return null;
+        }
+
         try {
             $count = $this->browser->runScript(0, 'get_element_content', ['elementSelector' => $selector, 'Xpath' => true], 10);
         }
@@ -217,7 +261,6 @@ class ParserService
             $this->log('Exception getting total pages script:'.$ex->getMessage());
             return 0;
         }
-        $this->log('Pages count: ' . $count);
         return $count ? intval($count)  : null;
     }
 
@@ -271,10 +314,11 @@ class ParserService
             $this->browser->navigateTab(0, $newUrl);
             sleep(5);         
         }
-        $this->log('Waiting captcha');
+
+        $pageObj = $this->browser->getTab(0);
+        $this->log('Waiting captcha for ads collecting');
         try {
-            $attempts = 10;
-            $pageObj = $this->browser->getTab(0);
+            $attempts = 10;            
             while ($pageObj->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
                 $this->processCaptcha($pageObj);
                 sleep(5);
@@ -288,11 +332,9 @@ class ParserService
             $this->log('No captcha!');
         }
 
-        $itemsSelector =  '//div[@data-marker="item"]//h2/a[@itemprop="url"]';
+        $itemsSelector = '//div[@data-marker="item"]//h2/a[@itemprop="url"]';
 
-        $items = $this->browser->runScript(0, 'avito/find_ads', ['elementSelector' => $itemsSelector, 'Xpath' => true]);
-
-        $result = false;
+        $items = $this->browser->runScriptOnPage($pageObj, 'avito/find_ads');
 
         if ($items) {
             return $items;
@@ -323,7 +365,7 @@ class ParserService
         }
         catch (\Exception $ex)
         {
-            $this->log('No signal about readiness to navigation', 'warning');
+            $this->log('Ratings: no signal about readiness to navigation', 'warning');
         }
 
         $reviewsModalSelector = 'div[role="dialog"]';
@@ -620,7 +662,7 @@ class ParserService
 
         $steps = random_int(4, 8);
         $initialOffsetX = random_int(5, 10);
-        $initialOffsetY = random_int(2, 10);
+        $initialOffsetY = random_int(10, 20);
         $startX = intval($geeButtonCoords[0])+$initialOffsetX;
         $startY = intval($geeButtonCoords[1])+$initialOffsetY ; //80 is magic number
 
@@ -697,7 +739,7 @@ class ParserService
         $task->save();
         $this->search($query->query_text);
         $totalPages = $this->getTotalPages();
-
+        $this->log('Pages count: ' . $totalPages);
         //Для теста
         if ($totalPages  > 3) {
             $totalPages = 3;
@@ -705,15 +747,22 @@ class ParserService
 
         $task->stage = 'ads';
         $task->save();
-
-        for ($i=1 ; $i < $totalPages; $i++ ) {
+    
+        for ($i=1; $i < $totalPages; $i++ ) {
+            $this->log('Collecting ads on page '.$i);
             $items = $this->collectAds($i);
             $this->log('Parsed '.count($items).' ads');
-            $query->update(['observed_at' => now(), 'total_pages' => $totalPages,]);
+            try {
+                $query->update(['observed_at' => now(), 'total_pages' => $totalPages,]);
 
-            $preparedItems = Ad::prepareInsertData($items, $query->id);
+                $preparedItems = Ad::prepareInsertData($items, $query->id);
+            
+                Ad::insert($preparedItems);
+            }
+            catch (\Exception $ex) {
+                $this->log('Error inserting ads: '.$ex->getMessage());
+            }
 
-            Ad::insert($preparedItems);
             $this->log('Page '.($i+1).' processed');
             sleep(random_int(2, 4));
         }
