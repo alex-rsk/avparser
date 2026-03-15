@@ -21,7 +21,7 @@ class HeadlessBrowserWrapper
     /**
      * Загрузчик скриптов
      * 
-     * @var \Components\GHC\ScriptLoader
+     * @var App\Services\HeadlessBrowser\ScriptLoader
      */
     protected $scriptLoader = null;
     
@@ -152,7 +152,7 @@ class HeadlessBrowserWrapper
     {
         $config = config('headless-chrome');
         $cmd = $config['browser_bin'];
-
+        echo 'CheckHanging process';
         $browserBinPath = explode(DIRECTORY_SEPARATOR, $config['browser_bin']);
         $bin = end($browserBinPath);
 
@@ -164,12 +164,11 @@ class HeadlessBrowserWrapper
             return false;
         }
         $browserGrep = '['.substr($browser,0,1).']'.substr($browser,1);
-        $checkCommand = 'ps -eaf | grep "'.$browserGrep.'.*thread-id-'.$instanceNumber.'" | awk \'$1 ~ /./ {print $2}\'';
+        $checkCommand = 'ps -eaf | grep "'.$browserGrep.'.*'.$instanceNumber.'" | awk \'$1 ~ /./ {print $2}\'';
         Log::channel('browser')->debug('Check command ' . $checkCommand);
         $pids = [];
-
         exec($checkCommand, $pids);
-
+        dump('Pids:'.print_r($pids, true));
         if (!empty($pids))
         {
             foreach ($pids as $pid)
@@ -184,11 +183,19 @@ class HeadlessBrowserWrapper
         }
 
         if (!empty($profileDir)) {
-            Log::channel('browser')->debug("Trying to remove socket file");
-            $socketFile = $profileDir.DIRECTORY_SEPARATOR.'socket';
-            if (file_exists($socketFile))
+            
+            Log::channel('browser')->debug("Trying to remove socket file and singleton locks");
+            $filesToDelete = [
+                $profileDir.DIRECTORY_SEPARATOR.'socket',
+                $profileDir.DIRECTORY_SEPARATOR.'SingletonLock',
+                $profileDir.DIRECTORY_SEPARATOR.'SingletonCookie',
+                $profileDir.DIRECTORY_SEPARATOR.'SingletonSocket',
+            ];
+            foreach ($filesToDelete as $file)
+            if (file_exists($file))
             {
-                unlink($socketFile);
+                Log::channel('browser')->debug('Delete '.$file);
+                unlink($file);
             }
         }
         return true;
@@ -232,7 +239,7 @@ class HeadlessBrowserWrapper
             Log::channel('browser')->debug('Файл сокета существует, ID потока: '.$params['thread_id']);
             $socket = file_get_contents($this->socketFile);
             try {
-                $browser = BrowserFactory::connectToBrowser($socket, []);
+                $browser = BrowserFactory::connectToBrowser($socket, []); //Browser 
                 $this->created = false;
             } catch (\HeadlessChromium\Exception\BrowserConnectionFailed $e) {
                 Log::channel('browser')->warning('Ошибка подключения. ID потока: '.$params['thread_id'].' Сообщение:' .$e->getMessage());
@@ -244,8 +251,9 @@ class HeadlessBrowserWrapper
             try {
                 if (!$browser) {                
                     $factory           = new BrowserFactory($config['browser_bin']);
-                    $browser           = $factory->createBrowser($options);
-
+                    $browser           = $factory->createBrowser($options); //ProcessAwareBrowser - a Browser instance to interact with the new chrome process
+                    $pid = $browser->getPID();
+                    dump("PID :".$pid);
                     //$this->process     = $factory->getBrowserProcess();
                     file_put_contents($this->socketFile, $browser->getSocketUri());
                     //$this->commandLine = $browser->getCommandLine();
@@ -253,10 +261,12 @@ class HeadlessBrowserWrapper
                 }
             } catch (\Exception $ex) {
                 $errorMessage = 'Ошибка запуска браузера: ' . $ex->getMessage();
-                // dump($ex->getTraceAsString());
+                dump($ex->getMessage());
                 if (!empty($params['thread_id']))
                 {
-                    self::checkHangingProcess($params['thread_id'], $params['user_data_dir']);
+                    dump('Checkhanging');
+                    dump($this->userDirectory);
+                    self::checkHangingProcess($params['thread_id'], $this->userDirectory);
                 }
                 throw new BrowserFailedException($errorMessage, $ex->getCode(), 
                     $this->process, $ex);
@@ -314,26 +324,33 @@ class HeadlessBrowserWrapper
     protected function prepareFlags($params)
     {
         $config = config('headless-chrome');
-        $debugPort       = $params['debug_port'] ?? config('headless-chrome.default_debug_port');
+        $debugPort       = 9222;//$params['debug_port'] ?? config('headless-chrome.default_debug_port');
         //Описание опций запуска: https://peter.sh/experiments/chromium-command-line-switches/
         $customFlags = [
             '--remote-debugging-port=' . $debugPort,
             '--user-agent=' . $params['user_agent'],
             // '--disable-gl-drawing-for-tests',  //TODO раскомментировать, когда не нужны будут тестовые скриншоты */
+            '--disable-geolocation',
             '--crash-on-hang-threads=UI:120,IO:120',
             '--homedir='.$this->userDirectory,
             '--disable-features=TranslateUI, InfiniteSessionRestore',
             '--disable-restore-session-state',
             '--noerrdialogs',
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-crashpad',
+            '--no-report-upload',
+            '--disable-setuid-sandbox',
+            '--disable-crash-reporter',
+            '--no-crash-upload',
             //'--blink-settings=imagesEnabled=false', //отключение картинок
             '--window-size='.$config['viewport'],
         ];
+        Log::debug(print_r($customFlags, true));
         if (isset($params['disable_notifications'])) {
             $customFlags[]= '--disable-notifications';
         }
-        if (isset($params['no_sandbox'])) {
-            $customFlags[]='--no-sandbox';
-        }
+
         if (isset($params['thread_id'])) {
             $customFlags[]='--thread-id-'.$params['thread_id'];
         }
@@ -350,8 +367,8 @@ class HeadlessBrowserWrapper
         $options = [
             'headless'    => $params['headless'] ?? true,
             'userDataDir' => $this->userDirectory,
-            'keepAlive'   => true,
-            'customFlags' => $customFlags
+            'keepAlive'   => true,            
+            'customFlags' => $customFlags            
         ];
 
         if (isset($params['debug_output'])) {
@@ -581,8 +598,8 @@ class HeadlessBrowserWrapper
      * 
      * @return mixed
      */
-    public function runScript($number = 0, $script, $params = [], 
-        $timeout = 5, $waitForReload = false)
+    public function runScript(int $number = 0, string $script, array $params = [], 
+        int $timeout = 5, bool $waitForReload = false)
     {
         Log::channel('browser')->debug('Запуск скрипта '.$script);
         $number = $number ?? $this->currentTab;
@@ -612,7 +629,7 @@ class HeadlessBrowserWrapper
     {
         Log::channel('browser')->debug('runScriptOnPage Запуск скрипта '.$script);        
         $scriptSource = $this->scriptLoader->load($script, $params);
-
+        //Log::channel('browser')->debug($scriptSource);
         if (empty($scriptSource))
         {
             throw new \Exception('Скрипт '.$script.' не найден');

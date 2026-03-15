@@ -18,8 +18,9 @@ class AdsTable
                 TextColumn::make('title')->searchable(),
                 TextColumn::make('status')->badge()->sortable(),
                 TextColumn::make('url')->formatStateUsing(fn ($state) => '<a style="color:blue" href="https://avito.ru'.$state.'" target="_blank">link</a>')->html(),
-                TextColumn::make('placed_at')->formatStateUsing(fn ($state) => $state?->format('Y-m-d H:i:s') ?? '-'),
-                TextColumn::make('created_at'),
+                TextColumn::make('last_visited_at')->label('Посещено')
+                    ->sortable(),
+                TextColumn::make('created_at')->label('Добавлен'),                
 
             ])
             ->filters([

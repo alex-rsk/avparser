@@ -23,11 +23,14 @@ class Ad extends Model
             
             $cleanUrl = preg_replace('~\?.*$~', '', $item['link']);
             $avitoId = (fn($val) =>  preg_match('~(\d+)\?.*$~', $item['link'], $matches) ? $matches[1] : null)($item['link']);
+            $price = !empty($price) ? floatval(preg_replace('~[^\d]~ ','', $price)) : null;
             $prepared[] =[
                 'search_query_id' => $searchQueryId,
                 'url'             => $item['link'],
                 'clean_url'       => $cleanUrl,
                 'title'           => $item['text'],
+                'price'           => $item['price'] ?? '',
+                'is_promoted'     => $item['promoted'] ?? 0,
                 'avito_id'        => $avitoId,
                 'created_at'      => date('Y-m-d H:i:s')
             ];

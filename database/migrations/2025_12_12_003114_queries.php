@@ -13,6 +13,7 @@ return new class extends Migration
     {
          Schema::create('search_queries', function (Blueprint $table) {
             $table->unsignedInteger('id')->autoIncrement();
+            $table->unsignedTinyInteger('priority')->default(1);
             $table->string('query_text', 1024);
             $table->integer('total_pages')->nullable();
             $table->integer('last_seen_page')->nullable();

@@ -95,6 +95,10 @@ class BrowserProcessExt extends BrowserProcess
             '--remote-debugging-port=0',
             // disable undesired features
             '--disable-background-networking',
+            '--disable-dev-shm-usage',
+            '--disable-setuid-sandbox',
+            '--disable-crash-reporter',
+            '--no-crash-upload',
             '--disable-background-timer-throttling',
             '--disable-client-side-phishing-detection',
             '--disable-default-apps',
@@ -144,9 +148,9 @@ class BrowserProcessExt extends BrowserProcess
         }
 
         // sandbox mode - useful if you want to use chrome headless inside docker
-        if (array_key_exists('noSandbox', $options) && $options['noSandbox']) {
+        //if (array_key_exists('noSandbox', $options) && $options['noSandbox']) {
             $args[] = '--no-sandbox';
-        }
+        //}
 
         // user agent
         if (array_key_exists('userAgent', $options)) {
@@ -203,6 +207,7 @@ class BrowserProcessExt extends BrowserProcess
         $this->logger->debug('process: initializing');
 
         // user data dir
+        /*
         if (!array_key_exists('userDataDir', $options) || !$options['userDataDir']) {
             // if no data dir specified create it
             $options['userDataDir'] = $this->createTempDir();
@@ -210,14 +215,16 @@ class BrowserProcessExt extends BrowserProcess
             // set user data dir to get removed on close
             $this->userDataDirIsTemp = true;
         }
+        */
         $this->userDataDir = $options['userDataDir'];
+        
 
         // log
         $this->logger->debug('process: using directory: ' . $options['userDataDir']);
 
         // get args for command line
         $args = $this->getArgsFromOptions($binary, $options);
-
+        dump($args);
         // setup chrome process
         $process       = new Process($args);
         $this->process = $process;
