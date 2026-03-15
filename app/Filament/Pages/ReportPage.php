@@ -22,8 +22,8 @@ class ReportPage extends Page implements HasSchemas
     use InteractsWithSchemas;
 
     protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-document-chart-bar';
-    protected static  ?string  $navigationLabel = 'Reports';
-    protected static ?string $title = 'Search Query Report';
+    protected static  ?string  $navigationLabel = 'Отчёты';
+    protected static ?string $title = 'Отчёты';
     protected static ?int $navigationSort = 99;
     protected string $view = 'filament.pages.report-page';
 
@@ -39,7 +39,7 @@ class ReportPage extends Page implements HasSchemas
         return $schema
             ->components([
                 Select::make('search_query_id')
-                    ->label('Search Query')
+                    ->label('Поисковый запрос')
                     ->options(fn () => SearchQuery::orderBy('query_text')->pluck('query_text', 'id'))
                     ->searchable()
                     ->preload()
@@ -48,13 +48,13 @@ class ReportPage extends Page implements HasSchemas
                     ->columnSpanFull(),
 
                 DatePicker::make('date_from')
-                    ->label('From')
+                    ->label('Дата от')
                     ->required()
                     ->native(false)                            
                     ->displayFormat('d/m/Y'),
 
                 DatePicker::make('date_to')
-                    ->label('To')
+                    ->label('до')
                     ->required()
                     ->native(false)
                     ->maxDate(now())

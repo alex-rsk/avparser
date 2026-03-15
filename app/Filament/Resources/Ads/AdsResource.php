@@ -22,7 +22,10 @@ class AdsResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $recordTitleAttribute = 'Advertisements';
+    protected static ?string $recordTitleAttribute = 'Объявления';
+    
+    protected static  ?string  $navigationLabel = 'Объявления!';
+    protected static ?string $title = 'Объявления';
 
     public static function form(Schema $schema): Schema
     {

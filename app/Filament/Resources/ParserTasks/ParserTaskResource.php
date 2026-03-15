@@ -22,7 +22,9 @@ class ParserTaskResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $recordTitleAttribute = 'Parser tasks';
+    protected static ?string  $navigationLabel = 'Парсеры';
+
+    protected static ?string $recordTitleAttribute = 'Парсеры';
 
     public static function form(Schema $schema): Schema
     {

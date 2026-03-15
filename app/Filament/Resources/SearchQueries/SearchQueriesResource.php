@@ -24,6 +24,8 @@ class SearchQueriesResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'Search queries';
 
+    protected static ?string  $navigationLabel = 'Поисковые запросы';
+
     public static function form(Schema $schema): Schema
     {
         return SearchQueriesForm::configure($schema);

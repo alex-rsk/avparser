@@ -24,6 +24,8 @@ class SettingsResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'Settings';
 
+    protected static ?string  $navigationLabel = 'Настройки';
+
     public static function form(Schema $schema): Schema
     {
         return SettingsForm::configure($schema);
