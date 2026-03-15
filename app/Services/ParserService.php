@@ -391,13 +391,6 @@ class ParserService
         $this->log('Total reviews:'.$totalReviews);
 
         try {
-            /*
-            list($modalX, $modalY) = $this->browser->runScriptOnPage($this->page, 'get_element_coords', [
-                'elementSelector' => $reviewsModalSelector,
-                'Xpath' => false
-            ], 10);
-            */
-            
             if ($totalReviews > 10) {
                 $this->log('scrolling');
                 $viewport = explode(',', config('headless-chrome.viewport'));
@@ -408,6 +401,7 @@ class ParserService
 
                 $currentScroll = 0;
                 $scrollLimit = ($totalReviews)*100;
+
                 $step = 500;
                 $this->log('Scroll limit:'.$scrollLimit);
 

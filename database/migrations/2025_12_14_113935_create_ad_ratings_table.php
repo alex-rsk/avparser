@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('ad_ratings', function (Blueprint $table) {
+        Schema::create('ad_reviews', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('ad_id');
             $table->unsignedSmallInteger('rating');
@@ -27,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('ad_ratings');
+        Schema::dropIfExists('ad_reviews');
     }
 };
