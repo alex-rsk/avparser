@@ -79,7 +79,7 @@ class ParsersManagerCommand extends Command
 
         //Получить задачи, которые ещё не запущены
         $sqIds =  SearchQuery::query()->select('id')->whereNotIn('id', $runningTasks)
-            ->orderBy('updated_at')
+            ->orderByRaw('priority DESC, updated_at ASC')
             ->limit($limit)->get()->pluck('id')->toArray();
 
         Log::channel('daily')->debug('Tasks for run:'.print_r($sqIds, true));

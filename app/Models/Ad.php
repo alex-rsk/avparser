@@ -20,9 +20,10 @@ class Ad extends Model
     public static function prepareInsertData(array $rawData, int $searchQueryId) {
         $prepared = [];
         foreach ($rawData as $item) {
-            dump($item);
+            
             $cleanUrl = preg_replace('~\?.*$~', '', $item['link']);
             $avitoId = (fn($val) =>  preg_match('~(\d+)\?.*$~', $item['link'], $matches) ? $matches[1] : null)($item['link']);
+            $price = !empty($price) ? floatval(preg_replace('~[^\d]~ ','', $price)) : null;
             $prepared[] =[
                 'search_query_id' => $searchQueryId,
                 'url'             => $item['link'],

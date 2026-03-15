@@ -26,6 +26,7 @@ class ReportController extends Controller
 
         $filename  = $rs->baseReport($request->date_from, $request->date_to, $request->search_query_id);
         Log::channel('daily')->debug($filename);
-        return response()->json(["filename" => $filename], 200);
+        return  response()->download($filename, basename($filename));
+        //return response()->json(["filename" => $filename], 200);
     }
 }

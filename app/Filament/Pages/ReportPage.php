@@ -43,7 +43,7 @@ class ReportPage extends Page implements HasSchemas
                     ->options(fn () => SearchQuery::orderBy('query_text')->pluck('query_text', 'id'))
                     ->searchable()
                     ->preload()
-                    ->placeholder('— Select a query —')
+                    ->placeholder('Выберите поисковый запрос')
                     ->required()
                     ->columnSpanFull(),
 

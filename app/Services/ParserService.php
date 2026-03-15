@@ -354,10 +354,7 @@ class ParserService
         $avgRating = $this->browser->runScriptOnPage($this->page, 'get_element_content', [
             'elementSelector' => $avgRatingsSelector, 'Xpath' => false]);
         $result['average_rating'] = floatval(str_replace(',', '.', $avgRating));
-
         sleep(2);
-        $ratingsSelector = 'a[data-marker="rating-caption/rating"]';
-        //$this->browser->getTab(0)->mouse()->find($ratingsSelector)->click();
         $newURL = $this->url.'#open-reviews-list';
 
         try {
@@ -375,7 +372,7 @@ class ParserService
         }
         catch (\Exception $ex)
         {
-            $this->log('Error waiting until element reveals: '.$ex->getMessage());
+            $this->log('Error waiting until reviews element appears: '.$ex->getMessage());
             return $result;
         }
 
@@ -394,25 +391,33 @@ class ParserService
         $this->log('Total reviews:'.$totalReviews);
 
         try {
+            /*
             list($modalX, $modalY) = $this->browser->runScriptOnPage($this->page, 'get_element_coords', [
                 'elementSelector' => $reviewsModalSelector,
                 'Xpath' => false
             ], 10);
+            */
+            
+            if ($totalReviews > 10) {
+                $this->log('scrolling');
+                $viewport = explode(',', config('headless-chrome.viewport'));
+                $centerX = floor($viewport[0]/2);
+                $centerY = floor($viewport[1]/2);
+                $this->log('Mouse center:'.$centerX.'-'.$centerY);
+                $this->page->mouse()->move($centerX, $centerY,  ['steps' => random_int(3, 6)])->click();
 
+                $currentScroll = 0;
+                $scrollLimit = ($totalReviews)*100;
+                $step = 500;
+                $this->log('Scroll limit:'.$scrollLimit);
 
-            if ($totalReviews > 25) {
-                $this->page->mouse()->move(500, 300 )->scrollDown(100);
-                    //->move($modalX+random_int(35, 60), $modalY+random_int(35, 60), ['steps' => random_int(20,30)])->click();
-
-                $count = ceil($totalReviews/25);
-
-                if ($count == 0) {
-                    $count = 1;
+                if ($scrollLimit > 10000) {
+                    $scrollLimit = 10000;
                 }
 
-                for ($i = 0; $i < $count; $i++) {
-                    //dump('Sweep '.$sweep);
-                    $this->page->mouse()->scrollDown(200);
+                while($currentScroll < $scrollLimit) {
+                    $currentScroll+=$step;                    
+                    $this->browser->runScriptOnPage($this->page, 'avito/scroll_reviews', ['scroll' => $currentScroll]);
                     sleep(random_int(1,2));
                 }
             }
@@ -452,21 +457,20 @@ class ParserService
             list ($today, $total) = $this->getViews();
             $ratings = $this->getRatings($title);
 
-
             $filteredReviews = array_filter($ratings['reviews'], function ($review) use ($title) {
-                return trim($review['title']) == trim($title);
+                return true;//trim($review['title']) == trim($title);
             });
 
             array_walk($filteredReviews, function (&$review) {
                 unset($review['title']);
                 $review['score'] = intval($review['score']);
             });
-
+            
             return [
-                'price' => $price,
-                'today_views' => $today,
-                'total_views' => $total,
-                'reviews' => $filteredReviews,
+                'price'         => $price,
+                'today_views'   => $today,
+                'total_views'   => $total,
+                'reviews'       => $filteredReviews,
                 'average_rating' => $ratings['average_rating']
             ];
         }
@@ -508,10 +512,11 @@ class ParserService
         }
 
         $this->log(print_r($adInfo, true));
+
         $ad->update([
             'status' => 'visited',
-            'title' => $ad->title,
-            'price' => $adInfo['price'],
+            'title'  => $ad->title,
+            'price'  => $adInfo['price'],
             'rating' => $adInfo['average_rating'],
             'last_visited_at' => now(),
             'created_at' => now(),
@@ -534,6 +539,7 @@ class ParserService
         foreach ($adInfo['reviews'] as $review) {
             $reviewObj = AdReview::create([
                 'ad_id' => $ad->id,
+                'comment' => $review['description'],
                 'rating' => $review['score'],
                 'created_at' => now()
             ]);
@@ -687,7 +693,7 @@ class ParserService
             ->where('search_query_id', $sQuery->id)
             ->whereIn('status', ['new', 'visited'])
             ->orderByRaw('IF(ads.status="visited", 0, 1) ASC, ads.last_visited_at DESC, ads.created_at DESC')
-            ->limit(10)->get();
+            ->limit(50)->get();
 
         foreach ($ads as $ad) {
             $this->log('Advertisement id: '.$ad->id);
