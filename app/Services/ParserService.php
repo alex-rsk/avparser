@@ -512,8 +512,8 @@ class ParserService
         }
 
         $this->log(print_r($adInfo, true));
-
-        $ad->update([
+        
+        $ad->update([       
             'status' => 'visited',
             'title'  => $ad->title,
             'price'  => $adInfo['price'],
@@ -667,21 +667,19 @@ class ParserService
         $this->log('X-coordinate :' .$targetX);
 
         $steps = random_int(4, 8);
-        $initialOffsetX = random_int(5, 10);
-        $initialOffsetY = random_int(10, 20);
+        $initialOffsetX = random_int(7, 11);
+        $initialOffsetY = random_int(9, 21);
         $startX = intval($geeButtonCoords[0])+$initialOffsetX;
-        $startY = intval($geeButtonCoords[1])+$initialOffsetY ; //80 is magic number
+        $startY = intval($geeButtonCoords[1])+$initialOffsetY ; 
 
 
         $this->log('Start X:'. $startX.' Y:'.$startY);
         sleep(random_int(2,5));
         $this->log("Pointing, steps " . $steps);
         $page->mouse()->move($startX, $startY, ['steps' => $steps])->press();
-
-        sleep(random_int(2,5));
         //Test
         $distance = $targetX;
-        $steps = random_int(4, 8);
+        $steps = random_int(2, 5);
         $this->log("Dragging");
         $page->mouse()->move($startX + $distance, $startY, ['steps' => $steps])->release();
 
