@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Services;
 
@@ -16,10 +16,10 @@ class ReportService
     {
 
         $searchQuery = SearchQuery::find($searchQueryId);
-        
+
         $spreadsheet = new Spreadsheet();
         $activeWorksheet = $spreadsheet->getActiveSheet();
-        
+
         $activeWorksheet->mergeCells('A1:F1');
         $activeWorksheet->setCellValue('A1', $searchQuery->query_text);
         $activeWorksheet->getStyle('A1')->applyFromArray([
@@ -30,20 +30,20 @@ class ReportService
         ]);
 
         $headers = ['ID на Авито',
-         'Название', 
-         'Цена', 
-         'Ссылка', 
-         'Продвинут', 
-         'Всего просмотров', 
-         'Сегодня просмотров', 
-         // 'Рейтинг', 
+         'Название',
+         'Цена',
+         'Ссылка',
+         'Продвинут',
+         'Всего просмотров',
+         'Сегодня просмотров',
+         // 'Рейтинг',
          'Средний балл обзоров',
-         'Список оценок', 
+         'Список оценок',
          'Комментарии'];
         $widths = [15, 60, 20, 60, 20, 20, 20, 30, 20];
         $letters =  range('A','Z');
 
-        for ($i= 0; $i< count($headers); $i++) {            
+        for ($i= 0; $i< count($headers); $i++) {
             $activeWorksheet->setCellValue(strtoupper($letters[$i]).'2', $headers[$i]);
             $activeWorksheet->getColumnDimension($letters[$i])->setWidth($widths[$i] ?? 15);
         }
@@ -59,9 +59,9 @@ class ReportService
         ];
         $lastHeaderLetter =  $letters[count($headers)];
         $activeWorksheet->getStyle('A2:'.$lastHeaderLetter.'2')->applyFromArray($styleArray);
-        
+
         $fromStr        = str_replace('-','_', $from);
-        $toStr          = str_replace('-','_', $to);        
+        $toStr          = str_replace('-','_', $to);
         $searchQuery    = SearchQuery::findOrFail($searchQueryId);
         $latinized      = Str::slug($searchQuery->title);
         $reportName     = storage_path('base_report_'.$latinized.'_'.$fromStr.'__'.$toStr.'.xlsx');
@@ -74,7 +74,7 @@ class ReportService
                 DB::raw('CONCAT("https://avito.ru", ads.clean_url) AS url'),
                 DB::raw('IF(ads.is_promoted>0, "Продвинут", "") AS promoted'),
                 DB::raw('COALESCE(av.total_views, 0) AS total_views'),
-                DB::raw('COALESCE(av.plus_views, 0) AS plus_views'),                
+                DB::raw('COALESCE(av.plus_views, 0) AS plus_views'),
                 //'ads.rating',
                 DB::raw('COALESCE(ar.avg_reviews_rating, "") AS avg_reviews_rating'),
                 DB::raw('COALESCE(ar.reviews_ratings, "") AS review_ratings'),
@@ -98,23 +98,24 @@ class ReportService
             ->where('search_query_id', $searchQueryId)
             ->whereNotNull('ads.last_visited_at');
         //    ->whereBetween('ads.created_at', [ $from, $to]);
-        
+
         $sql = $query->toSql();
         Log::channel('reports')->debug('SQL:'.$sql);
-            
+
         $rows = $query->get()->toArray();
 
         $writer = new Xlsx($spreadsheet);
 
         foreach ($rows as $rowIndex => $row) {
             $colIndex = 0;
-            foreach ($row as $colName => $fieldValue) {            
+            foreach ($row as $colName => $fieldValue) {
                 Log::channel('reports')->debug('Col:'.$colIndex);
                 $excelRowIndex = $rowIndex + 3;
-                $cellCoord = strtoupper($letters[$colIndex]).$excelRowIndex;                
+                $cellCoord = strtoupper($letters[$colIndex]).$excelRowIndex;
                 $activeWorksheet->setCellValue($cellCoord, $fieldValue);
                 if ($colName == 'url') {
                     $activeWorksheet->getCell($cellCoord)->getHyperlink()->setUrl($fieldValue);
+                    $activeWorksheet->getStyle($cellCoord)->getAlignment()->setWrapText(true);
                 }
                 $colIndex++;
             }
