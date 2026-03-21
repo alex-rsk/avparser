@@ -25,6 +25,9 @@ class ParserTaskResource extends Resource
     protected static ?string  $navigationLabel = 'Парсеры';
 
     protected static ?string $recordTitleAttribute = 'Парсеры';
+    protected static ?string $modelLabel = 'Парсер';
+    protected static ?string $pluralModelLabel = 'Парсеры';
+
 
     public static function form(Schema $schema): Schema
     {

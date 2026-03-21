@@ -22,7 +22,9 @@ class SearchQueriesResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $recordTitleAttribute = 'Search queries';
+    protected static ?string $recordTitleAttribute = 'Поисковый запрос';
+    protected static ?string $modelLabel = 'Поисковый запрос';
+    protected static ?string $pluralModelLabel = 'Поисковый запрос';
 
     protected static ?string  $navigationLabel = 'Поисковые запросы';
 

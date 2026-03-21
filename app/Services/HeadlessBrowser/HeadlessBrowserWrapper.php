@@ -252,11 +252,7 @@ class HeadlessBrowserWrapper
                 if (!$browser) {                
                     $factory           = new BrowserFactory($config['browser_bin']);
                     $browser           = $factory->createBrowser($options); //ProcessAwareBrowser - a Browser instance to interact with the new chrome process
-                    $pid = $browser->getPID();
-                    dump("PID :".$pid);
-                    //$this->process     = $factory->getBrowserProcess();
                     file_put_contents($this->socketFile, $browser->getSocketUri());
-                    //$this->commandLine = $browser->getCommandLine();
                     $this->created = true;
                 }
             } catch (\Exception $ex) {

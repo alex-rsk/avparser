@@ -23,14 +23,14 @@ class AdsResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     protected static ?string $recordTitleAttribute = 'Объявления';
-    
-    protected static  ?string  $navigationLabel = 'Объявления!';
-    protected static ?string $title = 'Объявления';
+    protected static ?string $modelLabel = 'Объявление';
+    protected static ?string $pluralModelLabel = 'Объявления';
 
     public static function form(Schema $schema): Schema
     {
         return AdsForm::configure($schema);
     }
+
 
     public static function infolist(Schema $schema): Schema
     {
@@ -53,9 +53,9 @@ class AdsResource extends Resource
     {
         return [
             'index' => ListAds::route('/'),
-            'create' => CreateAds::route('/create'),
-            'view' => ViewAds::route('/{record}'),
-            'edit' => EditAds::route('/{record}/edit'),
+            //'create' => CreateAds::route('/create'),
+            //'view' => ViewAds::route('/{record}'),
+            //'edit' => EditAds::route('/{record}/edit'),
         ];
     }
 }
