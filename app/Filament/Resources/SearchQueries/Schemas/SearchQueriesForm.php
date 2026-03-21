@@ -12,7 +12,8 @@ class SearchQueriesForm
     {
         return $schema
             ->components([
-                TextInput::make('query_text'),
+                TextInput::make('query_text')->label('Поисковый запрос'),
+                TextInput::make('priority')->label('Приоритет')->numeric()->default(1)->hint('Чем выше, тем приоритетнее'),
             ]);
     }
 }
