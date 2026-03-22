@@ -89,7 +89,7 @@ class ParserService
             //путь к библиотеке скриптов
             'scripts'               => resource_path('js/headless-scripts'),
             // режим без GUI
-            'headless'              => false,
+            'headless'              => true,
             //строка юзерагента
             'user_agent'            => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.80 Safari/537.36',
             //имя инстанса
