@@ -114,7 +114,7 @@ class ParserPool
             Cache::forever(self::TASKS_CACHE_KEY, $this->instances);
         }
         catch (\Exception $ex) {
-            Log::channel('daily')->error(__CLASS__.': '.$ex->getMessage());
+            Log::channel('daily')->error(__CLASS__.': '.$ex->getMessage().' '.$ex->getTraceAsString());
             return null;
         }
     }
