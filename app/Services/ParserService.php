@@ -91,7 +91,7 @@ class ParserService
             // режим без GUI
             'headless'              => false,
             //строка юзерагента
-            'user_agent'            => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.80 Safari/537.36',
+            'user_agent'            => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.80 Safari/537.36',
             //имя инстанса
             'user_data_dir'         => 'avito'.(string)($this->instanceNumber),
             //открываемый URL
