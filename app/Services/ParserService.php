@@ -89,7 +89,7 @@ class ParserService
             //путь к библиотеке скриптов
             'scripts'               => resource_path('js/headless-scripts'),
             // режим без GUI
-            'headless'              => true,
+            'headless'              => false,
             //строка юзерагента
             'user_agent'            => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.80 Safari/537.36',
             //имя инстанса
@@ -167,7 +167,6 @@ class ParserService
             return;
         }
 
-
         $this->page->mouse()->find($searchSelector)->click();
 
         $this->emulateHumanType($this->page, $query, 3);
@@ -175,7 +174,7 @@ class ParserService
 
         $this->page->keyboard()->typeRawKey("\r");
         $this->log('Waiting captcha');
-        
+        //sleep(5);
         try {
             $attempts = 10;            
             while ($this->page->mouse()->find('#geetest_captcha') && $attempts-- > 0) {

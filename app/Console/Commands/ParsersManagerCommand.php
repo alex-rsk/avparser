@@ -10,7 +10,7 @@ use Symfony\Component\Process\Process;
 
 class ParsersManagerCommand extends Command
 {
-    const EXECUTING_TOO_LONG_MIN = 20;
+    const EXECUTING_TOO_LONG_MIN = 5;
     /**
      * The name and signature of the console command.
      *
@@ -32,6 +32,7 @@ class ParsersManagerCommand extends Command
     {
         $pool = ParserPool::getInstance();
         $runningTasks = $pool->getActualProcessesCount();
+        dump($runningTasks);
         $capacity = 1;// config('headless-chrome.max_instances');
         $limit =  $capacity - $runningTasks;
 
@@ -44,9 +45,8 @@ class ParsersManagerCommand extends Command
         // Прибить задачи, которые зависли в промежуточном статусе если они выполняются слишком долго        
         $tooLongExecuting = ParserTask::query()->where('status', 'active')
             ->whereNotIn('stage', ['new', 'done'])
-            ->whereRaw("DATEDIFF('".date('Y-m-d H:i:s')."', updated_at) > $timeLimit")->get();
-
-        
+            ->whereRaw("TIME_TO_SEC(TIMEDIFF('".date('Y-m-d H:i:s')."', updated_at)) > $timeLimit")->get();
+        dump($tooLongExecuting);
         // 1. Получить PID
         // 2. Прибить задачу (этот крон должен быть запущен с рут-привилегиями)
         $idsToDelete = [];
