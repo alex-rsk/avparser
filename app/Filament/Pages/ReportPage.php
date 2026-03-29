@@ -40,7 +40,7 @@ class ReportPage extends Page implements HasSchemas
             ->components([
                 Select::make('search_query_id')
                     ->label('Поисковый запрос')
-                    ->options(fn () => SearchQuery::orderBy('query_text')->pluck('query_text', 'id'))
+                    ->options(fn () => SearchQuery::orderBy('id')->pluck('title', 'id'))
                     ->searchable()
                     ->preload()
                     ->placeholder('Выберите поисковый запрос')
