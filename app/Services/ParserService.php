@@ -289,11 +289,18 @@ class ParserService
             }
             $params  = array_merge(...$params);
             $this->log($params);
-            $newParams = array_merge(['localPriority' => 0,'p' => $page,], ['q' => $params['q']]);
+
+            if ($this->task->searchQuery->mode === 'text') {
+                $newParams = array_merge(['localPriority' => 0,'p' => $page,], ['q' => $params['q']]);
+            }
+            else {
+                $newParams = array_merge($params, ['p' => $page,]);
+            }
+
             $newUrl = $url . '?' . http_build_query($newParams);
             $this->log("New URL:".$newUrl);
             $this->browser->navigateTab(0, $newUrl);
-            sleep(5);         
+            sleep(5);
         }
 
         $pageObj = $this->browser->getTab(0);
@@ -812,6 +819,7 @@ class ParserService
 
     public function run(ParserTask $task)
     {    
+        $this->task = $task;
         $this->browser = $this->initBrowser();
         if ($task->searchQuery->mode == 'text') {
             $this->handleTextTask($task);

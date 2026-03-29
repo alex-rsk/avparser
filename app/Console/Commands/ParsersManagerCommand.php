@@ -10,7 +10,7 @@ use Symfony\Component\Process\Process;
 
 class ParsersManagerCommand extends Command
 {
-    const EXECUTING_TOO_LONG_MIN = 5;
+    const EXECUTING_TOO_LONG_MIN = 30;
     /**
      * The name and signature of the console command.
      *
