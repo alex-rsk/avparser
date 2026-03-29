@@ -12,6 +12,7 @@ use HeadlessChromium\Dom\Selector\XPathSelector;
 
 class ParserService
 {
+    const CAPTCHA_WAIT_ATTEMPTS = 5;
     const LOG_PREFIX = 'parser_';
     const ALLOWED_LEVELS = ['debug', 'warning', 'error', 'info'];
 
@@ -89,7 +90,7 @@ class ParserService
             //путь к библиотеке скриптов
             'scripts'               => resource_path('js/headless-scripts'),
             // режим без GUI
-            'headless'              => false,
+            'headless'              => config('headless-chrome.headless'),
             //строка юзерагента
             'user_agent'            => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.80 Safari/537.36',
             //имя инстанса
@@ -98,7 +99,7 @@ class ParserService
             // 'url'                   => $url,
             //порт для связи с браузером
             'debug_port'            => $this->portNumber,// + $this->inst - 1,
-            'debug_output'          => logger(),
+            //'debug_output'          => logger(),
             //очистка кэша скрипта
             'clear_script_cache'    => true,
             //каждый раз стартовать принудительно новый инстанс
@@ -127,24 +128,16 @@ class ParserService
 
     private function search(string $query) {
         $this->log('Checking captcha in search');
-        try {
-            $attempts = 10;            
-            while ($this->page->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
-                sleep(2);
-                $this->processCaptcha($this->page);
-                sleep(5);
-            }
+        $this->page = $this->browser->getTab(0);
 
-            if ($attempts == 0) {
-                $this->log('Can\t solve captcha  ');
-                $this->browser->close();
-            }
-        } catch (\Throwable $th) {
-            $this->log('No captcha!');
+        if (!$this->handleCaptcha($this->page)) {
+            $this->log('Cannot solve captcha');
+            $this->browser->close();
+            return;
         }
 
         $searchSelector = 'input[data-marker="search-form/suggest/input"]';
-        $this->page = $this->browser->getTab(0);
+        
         try {
             $this->log('Waiting for search element...');
             $attempts = 10;
@@ -173,22 +166,11 @@ class ParserService
         sleep(random_int(1, 3));
 
         $this->page->keyboard()->typeRawKey("\r");
-        $this->log('Waiting captcha');
-        //sleep(5);
-        try {
-            $attempts = 10;            
-            while ($this->page->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
-                sleep(2);
-                $this->processCaptcha($this->page);
-                sleep(5);
-            }
 
-            if ($attempts == 0) {
-                $this->log('Can\t solve captcha  ');
-                $this->browser->close();
-            }
-        } catch (\Throwable $th) {
-            $this->log('No captcha!');
+        if (!$this->handleCaptcha($this->page)) {
+            $this->log('Cannot solve captcha');
+            $this->browser->close();
+            return;
         }
     }
 
@@ -315,23 +297,7 @@ class ParserService
         }
 
         $pageObj = $this->browser->getTab(0);
-        $this->log('Waiting captcha for ads collecting');
-        try {
-            $attempts = 10;            
-            while ($pageObj->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
-                $this->processCaptcha($pageObj);
-                sleep(5);
-            }
-
-            if ($attempts == 0) {
-                $this->log('Can\t solve captcha  ');
-                $this->browser->close();
-            }
-        } catch (\Throwable $th) {
-            $this->log('No captcha!');
-        }
-
-        $itemsSelector = '//div[@data-marker="item"]//h2/a[@itemprop="url"]';
+        $this->handleCaptcha(0);
 
         $items = $this->browser->runScriptOnPage($pageObj, 'avito/find_ads');
 
@@ -684,7 +650,7 @@ class ParserService
             ->where('search_query_id', $sQuery->id)
             ->whereIn('status', ['new', 'visited'])
             ->orderByRaw('IF(ads.status="visited", 0, 1) ASC, ads.last_visited_at DESC, ads.created_at DESC')
-            ->limit(50)->get();
+            ->limit(10)->get();
 
         foreach ($ads as $ad) {
             $this->log('Advertisement id: '.$ad->id);
@@ -692,51 +658,79 @@ class ParserService
         }
     }
 
-
-    public function run(ParserTask $task)
+    private function handleCaptcha(Page|int $page, int $attempts = 10) : bool
     {
-        /*
-        if ($task->process_pid > 0 && HelperService::checkProcess($task->process_pid)) {
-            $this->log("Task is already running, query: " . $task->searchQuery->query_text . " PID: " . $task->process_pid);
-            return;
-        }
-        */
-
-        $query = $task->searchQuery;
-
-        $this->browser = $this->initBrowser();
-
-        $this->browser->navigateTab(0, 'https://avito.ru/');
-        sleep(5);
-
         try {
-            $attempts = 10;
-            $pageObj = $this->browser->getTab(0);
-            while ($pageObj->mouse()->find('#geetest_captcha') && $attempts-- > 0) {
+            $this->log('hc 1');
+            $attempts = self::CAPTCHA_WAIT_ATTEMPTS;
+            $captchaFound = 0;
+            $pageObj = $page instanceof Page ? $page : $this->browser->getTab($page);
+            $this->log('hc 2');
+            try {
+                while ($attempts-- > 0 && $captchaFound == 0) {
+                    $this->log('hc while 1');
+                    $this->log('Waiting for captcha... Attempt '.((self::CAPTCHA_WAIT_ATTEMPTS+1)-$attempts));
+                    sleep(2);
+                    $captchaFound = $this->browser->runScriptOnPage($pageObj, 'check_element_presence', [
+                        'selector' => '#geetest_captcha', 'xpath' => false], 10);
+                    $this->log('hc while 2');
+                }
+            }
+            catch (\Exception $ex)
+            {        
+                $this->log('Can\'t find captcha, message '.$ex->getMessage());
+                return false;
+            }
+
+            if (!$captchaFound) {
+                $this->log('No captcha');
+                return true;
+            }
+
+            $captchaAttempts = 10;            
+            while ($pageObj->mouse()->find('#geetest_captcha') && $captchaAttempts -- > 0) {
                 $this->processCaptcha($pageObj);
                 sleep(5);
             }
 
-            if ($attempts == 0) {
-                $this->log('Can\t solve captcha  ');
-                $this->browser->close();
-            }
-            $task->stage = 'new';
-            $task->status = 'active';
-            $task->save();
-            $this->browser->close();
-            return;
+            $captchaPresent = $this->browser->runScriptOnPage($pageObj, 'check_element_presence', [
+                    'selector' => '#geetest_captcha', 'xpath' => false], 10);
 
-        } catch (\Throwable $th) {
-            $this->log('No captcha', 'debug');
+            if ($captchaAttempts == 0 && $captchaPresent) {
+                $this->log('Can\t solve captcha', 'warning');
+                return false;
+            } 
+
+            $this->log('Captcha solved', 'debug');
+            return true;
         }
+        catch (\Throwable $th)
+        {
+            $this->log('Error handleCaptcha: '.$th->getMessage(), 'warning');
+            return true;
+        }
+    }
 
+    private function handleTextTask(ParserTask $task)
+    {
+        $query = $task->searchQuery;
         $this->log('STEP 1 >>>>> Collecting pages');
+        $this->browser->navigateTab(0, 'https://avito.ru');
+
+        if (!$this->handleCaptcha(0)) {
+            $this->log('Cannot pass captcha (');
+            $this->browser->close();
+        } 
+
+        $this->search($query->query_text);
+
+        sleep(random_int(7, 10));
+
         $task->stage = 'pages';
         $task->save();
-        $this->search($query->query_text);
         $totalPages = $this->getTotalPages();
         $this->log('Pages count: ' . $totalPages);
+        
         //Для теста
         if ($totalPages  > 3) {
             $totalPages = 3;
@@ -751,9 +745,7 @@ class ParserService
             $this->log('Parsed '.count($items).' ads');
             try {
                 $query->update(['observed_at' => now(), 'total_pages' => $totalPages,]);
-
-                $preparedItems = Ad::prepareInsertData($items, $query->id);
-            
+                $preparedItems = Ad::prepareInsertData($items, $query->id);            
                 Ad::insert($preparedItems);
             }
             catch (\Exception $ex) {
@@ -766,11 +758,69 @@ class ParserService
 
         $this->log('STEP 2 >>>> Processing ads');
         $this->processAds($query);
-        $this->log('STEP 2 >>>> Done');
+        $this->log('>>>> Done');
+
+    }
+
+    private function handleUrlTask(ParserTask $task)
+    {
+        $query = $task->searchQuery;
+        $this->log('STEP 1 >>>> Open category URL');
+        $this->browser->navigateTab(0, $task->searchQuery->category_url);
+        sleep(2);
+        if (!$this->handleCaptcha(0)) {
+            $this->log('Cannot solve captcha');
+            $this->browser->close();
+            return;
+        }
+
+        $task->stage = 'pages';
+        $task->save();
+        $totalPages = $this->getTotalPages();
+        $this->log('Pages count: ' . $totalPages);
+
+        //Для теста
+        if ($totalPages  > 3) {
+            $totalPages = 3;
+        }
+
+        $task->stage = 'ads';
+        $task->save();
+    
+        for ($i=1; $i < $totalPages; $i++ ) {
+            $this->log('Collecting ads on page '.$i);
+            $items = $this->collectAds($i);
+            $this->log('Parsed '.count($items).' ads');
+            try {
+                $query->update(['observed_at' => now(), 'total_pages' => $totalPages,]);
+                $preparedItems = Ad::prepareInsertData($items, $query->id);            
+                Ad::insert($preparedItems);
+            }
+            catch (\Exception $ex) {
+                $this->log('Error inserting ads: '.$ex->getMessage());
+            }
+
+            $this->log('Page '.($i+1).' processed');
+            sleep(random_int(2, 4));
+        }
+
+        $this->log('STEP 2 >>>> Processing ads');
+        $this->processAds($query);
+        $this->log('>>>> Done');        
+    }
+
+
+    public function run(ParserTask $task)
+    {    
+        $this->browser = $this->initBrowser();
+        if ($task->searchQuery->mode == 'text') {
+            $this->handleTextTask($task);
+        } else {
+            $this->handleUrlTask($task);
+        }
 
         $task->stage = 'done';
         $task->save();
         $this->browser->close();
-
     }
 }

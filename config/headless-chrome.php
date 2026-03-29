@@ -1,6 +1,6 @@
 <?php
 return [
-
+    'headless' => env('HEADLESS',  false),
     'profile_dir' => storage_path('profiles'),
     'browser_bin' => '/usr/bin/google-chrome',
     'default_debug_port' => 9222,
