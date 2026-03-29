@@ -86,26 +86,8 @@ class ParserPool
 
     public function addBrowserInstance(ParserTask $parserTask) : ?int
     {
-        try {
-            $instCount = $this->getActualProcessesCount();
-
-            $maxInstances = Settings::getBySlug('browser_process_count') ?? config('headless-chrome.max_instances');
-
-            if ($instCount >= $maxInstances) {
-                throw new TooManyInstancesException();
-            }
-
-            if (isset(self::$tasks[$parserTask->searchQuery->query_text])) {
-                return $parserTask->process_pid;
-            } else {
-                self::$tasks[$parserTask->searchQuery->query_text] = $parserTask;
-            }
-
-            if ($parserTask->status == 'active') {
-
-            }
-
-            self::$tasks[$parserTask->searchQuery->query_text] = $parserTask;
+        try {            
+            
             Log::channel('browser')->debug('Create new parser service');
             $ps = new ParserService($parserTask->searchQuery->id);
             $ps->run($parserTask);
@@ -121,20 +103,16 @@ class ParserPool
 
 
     public function removeBrowserInstance(ParserTask $parserTask)
-    {
+    {        
+        $cmd = 'kill -9 '.$parserTask->process_pid;
+        shell_exec($cmd);
+        $parserTask->status = 'stopped';
+        $parserTask->process_pid = 0;
+        $parserTask->save();
         if (isset($this->tasks[$parserTask->searchQuery->query_text])) {
-            $pt = $this->tasks[$parserTask->searchQuery->query_text];
-            if (!$pt instanceof ParserTask) {
-                throw new \Exception('Not a ParserTask object');
-            }
-            $cmd = 'kill -9 '.$pt->process_pid;
-            shell_exec($cmd);
-            $pt->status = 'stopped';
-            $pt->process_pid = 0;
-            $pt->save();
             unset($this->tasks[$parserTask->searchQuery->query_text]);
         }
-
     }
+
 
 }

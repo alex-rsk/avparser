@@ -7,6 +7,7 @@ use Illuminate\Console\Command;
 use App\Models\{SearchQuery, ParserTask};
 use App\Services\ParserPool;
 use Symfony\Component\Process\Process;
+use App\Models\Settings;
 
 class ParsersManagerCommand extends Command
 {
@@ -32,8 +33,8 @@ class ParsersManagerCommand extends Command
     {
         $pool = ParserPool::getInstance();
         $runningTasks = $pool->getActualProcessesCount();
-        dump($runningTasks);
-        $capacity = 1;// config('headless-chrome.max_instances');
+        //dump($runningTasks);
+        $capacity = Settings::getBySlug('browser_process_count') ?? 1;
         $limit =  $capacity - $runningTasks;
 
         if ($limit <= 0) {
@@ -45,29 +46,43 @@ class ParsersManagerCommand extends Command
         // Прибить задачи, которые зависли в промежуточном статусе если они выполняются слишком долго        
         $tooLongExecuting = ParserTask::query()->where('status', 'active')
             ->whereNotIn('stage', ['new', 'done'])
-            ->whereRaw("TIME_TO_SEC(TIMEDIFF('".date('Y-m-d H:i:s')."', updated_at)) > $timeLimit")->get();
-        dump($tooLongExecuting);
-        // 1. Получить PID
-        // 2. Прибить задачу (этот крон должен быть запущен с рут-привилегиями)
+            ->whereRaw("TIME_TO_SEC(TIMEDIFF('".date('Y-m-d H:i:s')."', updated_at)) > $timeLimit")
+            ->get();
+
+        foreach ($tooLongExecuting as $tlItem) {
+            Log::channel('daily')->debug('Too long executing: [ID:'.$tlItem->id.'] PID:'.$tlItem->process_pid);
+        }
+
+        $disabled =  ParserTask::query()->where('status', 'active')->whereHas('searchQuery', function ($builder) {
+            return $builder->where('is_enabled', 0);
+        })->get();
+
+        foreach ($tooLongExecuting as $tlItem) {
+            Log::channel('daily')->debug('Too long executing: [ID:'.$tlItem->id.'] PID:'.$tlItem->process_pid);
+        }
+
         $idsToDelete = [];
-        foreach ($tooLongExecuting as $tl) {
-            Log::channel('daily')->debug('Too long executing: [ID:'.$tl->id.'] PID:'.$tl->process_pid);
-            if ($tl->process_pid>0) {
+
+        $toDelete = $tooLongExecuting->merge($disabled);
+
+        foreach ($toDelete as $pTask) {
+            Log::channel('daily')->debug('To delete: [ID:'.$pTask->id.'] PID:'.$pTask->process_pid);
+            if ($pTask->process_pid>0) {
                 //Run it with root privileges!
-                shell_exec('kill -9 '.$tl->process_pid);
+                shell_exec('kill -9 '.$pTask->process_pid);
                 sleep(5);
-                $out = shell_exec('ps -o pid -p '.$tl->process_pid);
+                $out = shell_exec('ps -o pid -p '.$pTask->process_pid);
                 $cleanedOut =  preg_replace("~PID|[\n\t\s]~", '',  $out);
                 if (intval($cleanedOut)>0) {
-                    Log::debug('Cannot kill process '.$tl->process_pid);
+                    Log::debug('Cannot kill process '.$pTask->process_pid);
                 } else {
-                    $idsToDelete[]= $tl->id;
+                    $idsToDelete[]= $pTask->id;
                 }
             }
         }
 
         if (count($idsToDelete)> 0) {
-            ParserTask::whereIn('id', $idsToDelete)->update(['status' => 'error']); 
+            ParserTask::query()->whereIn('id', $idsToDelete)->delete();
         }
 
         // Получить уже запущенные задачи
@@ -78,7 +93,9 @@ class ParsersManagerCommand extends Command
         Log::channel('daily')->debug('Задач запущено:'.count($runningTasks));
 
         //Получить задачи, которые ещё не запущены
-        $sqIds =  SearchQuery::query()->select('id')->whereNotIn('id', $runningTasks)
+        $sqIds =  SearchQuery::query()->select('id')
+            ->where('is_enabled', 1)
+            ->whereNotIn('id', $runningTasks)
             ->orderByRaw('priority DESC, updated_at ASC')
             ->limit($limit)->get()->pluck('id')->toArray();
 
