@@ -650,7 +650,7 @@ class ParserService
             ->where('search_query_id', $sQuery->id)
             ->whereIn('status', ['new', 'visited'])
             ->orderByRaw('IF(ads.status="visited", 0, 1) ASC, ads.last_visited_at DESC, ads.created_at DESC')
-            ->limit(10)->get();
+            ->limit(1000)->get();
 
         foreach ($ads as $ad) {
             $this->log('Advertisement id: '.$ad->id);
@@ -780,8 +780,8 @@ class ParserService
         $this->log('Pages count: ' . $totalPages);
 
         //Для теста
-        if ($totalPages  > 3) {
-            $totalPages = 3;
+        if ($totalPages  > 20) {
+            $totalPages = 20;
         }
 
         $task->stage = 'ads';
