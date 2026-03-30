@@ -320,7 +320,7 @@ class HeadlessBrowserWrapper
     protected function prepareFlags($params)
     {
         $config = config('headless-chrome');
-        $debugPort       = 9222;//$params['debug_port'] ?? config('headless-chrome.default_debug_port');
+        $debugPort       = $params['debug_port'] ?? config('headless-chrome.default_debug_port');
         //Описание опций запуска: https://peter.sh/experiments/chromium-command-line-switches/
         $customFlags = [
             '--remote-debugging-port=' . $debugPort,
