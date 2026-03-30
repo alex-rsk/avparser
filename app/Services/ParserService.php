@@ -12,6 +12,7 @@ use HeadlessChromium\Dom\Selector\XPathSelector;
 
 class ParserService
 {
+    const PAGE_LIMIT = 100;
     const CAPTCHA_WAIT_ATTEMPTS = 5;
     const LOG_PREFIX = 'parser_';
     const ALLOWED_LEVELS = ['debug', 'warning', 'error', 'info'];
@@ -31,12 +32,14 @@ class ParserService
 
     private $url = '';
 
+    private $logFile =  null;
+
     public function __construct(int $instanceNumber = 1, ?string $proxy = null)
     {
         $this->instanceNumber = $instanceNumber;
 
         $this->portNumber = intval(config('headless-chrome.default_debug_port')) + $this->instanceNumber - 1;
-
+        $this->logFile = storage_path('logs/' . self::LOG_PREFIX . $this->instanceNumber . '.log');
         if (!empty($proxy)) {
             $this->proxy = $proxy;
         }
@@ -66,7 +69,7 @@ class ParserService
             $message = json_encode($message, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
 
-        $filename = storage_path('logs/' . self::LOG_PREFIX . $index . '.log');
+        $filename = $this->logFile;
 
         $entry = sprintf(
             "[%s] [%s] %s%s",
@@ -77,6 +80,11 @@ class ParserService
         );
 
         file_put_contents($filename, $entry . PHP_EOL, FILE_APPEND | LOCK_EX);
+    }
+
+    public function getLastActivityTime()
+    {
+        return filemtime($this->logFile);
     }
 
     public function getPortNumber() : int
@@ -575,9 +583,6 @@ class ParserService
             return;
         }
 
-        $puzzleHeight = 80;
-        $puzzleWidth = 80;
-
         $puzzleRelativeTop = (int)(ceil(floatval($geeSliceCoords[1])-floatval($geeBgCoords[1])));
         $this->log("Puzzle relative Y: " . $puzzleRelativeTop);
 
@@ -739,8 +744,8 @@ class ParserService
         $this->log('Pages count: ' . $totalPages);
         
         //Для теста
-        if ($totalPages  > 3) {
-            $totalPages = 3;
+        if ($totalPages > self::PAGE_LIMIT) {
+            $totalPages = self::PAGE_LIMIT;
         }
 
         $task->stage = 'ads';
@@ -787,14 +792,14 @@ class ParserService
         $this->log('Pages count: ' . $totalPages);
 
         //Для теста
-        if ($totalPages  > 100) {
-            $totalPages = 100;
+        if ($totalPages > self::PAGE_LIMIT) {
+            $totalPages = self::PAGE_LIMIT;
         }
 
         $task->stage = 'ads';
         $task->save();
     
-        for ($i=1; $i < $totalPages; $i++ ) {
+        for ($i=1; $i < $totalPages; $i++) {
             $this->log('Collecting ads on page '.$i);
             $items = $this->collectAds($i);
             $this->log('Parsed '.count($items).' ads');
