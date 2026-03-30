@@ -45,6 +45,7 @@ class ParserService
         }
     }
 
+
     /*
     * Write a message to a log file.
     *
@@ -82,10 +83,8 @@ class ParserService
         file_put_contents($filename, $entry . PHP_EOL, FILE_APPEND | LOCK_EX);
     }
 
-    public function getLastActivityTime()
-    {
-        return filemtime($this->logFile);
-    }
+
+
 
     public function getPortNumber() : int
     {

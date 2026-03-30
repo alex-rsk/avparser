@@ -11,7 +11,7 @@ use App\Models\Settings;
 
 class ParsersManagerCommand extends Command
 {
-    const EXECUTING_TOO_LONG_MIN = 30;
+    const NO_CHANGES_MIN = 5;
     /**
      * The name and signature of the console command.
      *
@@ -42,12 +42,21 @@ class ParsersManagerCommand extends Command
             return ;
         }
 
-        $timeLimit = 10*60;
-        // Прибить задачи, которые зависли в промежуточном статусе если они выполняются слишком долго        
+        $timeLimit = self::NO_CHANGES_MIN*60;
+
+        // Прибить задачи, логи в которых не обновляются >NO_CHANGES_MIN  мин
         $tooLongExecuting = ParserTask::query()->where('status', 'active')
             ->whereNotIn('stage', ['new', 'done'])
-            ->whereRaw("TIME_TO_SEC(TIMEDIFF('".date('Y-m-d H:i:s')."', updated_at)) > $timeLimit")
-            ->get();
+            ->get()->filter(function ($item) use ($timeLimit) {
+                $searchQueryId = $item->searchQuery->id;
+                $logFileName = storage_path('logs/' . \App\Services\ParserService::LOG_PREFIX . $searchQueryId . '.log');
+                if (file_exists($logFileName)) {
+
+                    $lastActivityTime = filemtime($logFileName);
+                    return (time() - $lastActivityTime >$timeLimit);
+                }
+                return false;
+            });
 
         foreach ($tooLongExecuting as $tlItem) {
             Log::channel('daily')->debug('Too long executing: [ID:'.$tlItem->id.'] PID:'.$tlItem->process_pid);
@@ -128,10 +137,10 @@ class ParsersManagerCommand extends Command
                 $pTask->stage = 'new';
                 $pTask->save();
             }
-            
+
             dump('Starting process');
 
-            
+
             $cmd = 'nohup php artisan parser:run '.$pTask->id.' > /dev/null 2>/dev/null & echo $!';
             Log::channel('daily')->debug($cmd);
             //$process = Process::fromShellCommandLine('nohup php artisan parser:run '.$pTask->id.' > /dev/null 2>/dev/null &');
@@ -139,9 +148,9 @@ class ParsersManagerCommand extends Command
             //$process->start();
             $pid = shell_exec($cmd);
             dump($pid);
-            
+
             dump('Started');
-        
+
             //Записать PID после запуска
             $pTask->process_pid = $pid;
             $pTask->save();
