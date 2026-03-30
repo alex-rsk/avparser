@@ -787,8 +787,8 @@ class ParserService
         $this->log('Pages count: ' . $totalPages);
 
         //Для теста
-        if ($totalPages  > 20) {
-            $totalPages = 20;
+        if ($totalPages  > 100) {
+            $totalPages = 100;
         }
 
         $task->stage = 'ads';
