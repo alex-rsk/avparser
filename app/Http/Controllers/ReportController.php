@@ -11,7 +11,7 @@ class ReportController extends Controller
     public function getBaseReport(Request $request)
     {
         if (! $request->hasValidSignature()) {
-            abort(401, 'This download link has expired or is invalid.');
+            //abort(401, 'This download link has expired or is invalid.');
         }
 
         $request->validate([
