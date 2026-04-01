@@ -6,6 +6,7 @@ use Filament\Schemas\Schema;
 
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Get;
 
@@ -30,6 +31,12 @@ class SearchQueriesForm
                     ->rows(5)
                     ->hint('Собираются объявления по этому URL')
                     ->visible(fn ($get): bool => $get('mode') === 'url'),
+                TimePicker::make('launch_time')
+                    ->format('H:i')
+                    ->native(false)
+                    ->seconds(false)
+                    ->timezone('Europe/Moscow')
+                    ->label('Время запуска'),
                 TextInput::make('priority')->label('Приоритет')->numeric()->default(1)->hint('Чем выше, тем приоритетнее'),
             ]);
     }

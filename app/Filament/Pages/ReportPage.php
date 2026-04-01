@@ -85,8 +85,8 @@ class ReportPage extends Page implements HasSchemas
         $this->js("window.open('{$url}', '_blank')");
 
         Notification::make()
-            ->title('Report is being generated')
-            ->body('Your Excel file will download shortly.')
+            ->title('Отчёт генерируется')
+            ->body('Скоро он будет скачан автоматически')
             ->success()
             ->send();
     }

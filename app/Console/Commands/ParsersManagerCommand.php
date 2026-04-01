@@ -104,6 +104,10 @@ class ParsersManagerCommand extends Command
         //Получить задачи, которые ещё не запущены
         $sqIds =  SearchQuery::query()->select('id')
             ->where('is_enabled', 1)
+            ->where(fn ($builder) => $builder
+                ->whereBetween('launch_time', [now()->format('H:i:s'), now()->add('1 hour')->format('H:i:s')])
+                 ->orWhere(fn($builderOr) => $builderOr->whereNull('launch_time'))
+            )
             ->whereNotIn('id', $runningTasks)
             ->orderByRaw('priority DESC, updated_at ASC')
             ->limit($limit)->get()->pluck('id')->toArray();
