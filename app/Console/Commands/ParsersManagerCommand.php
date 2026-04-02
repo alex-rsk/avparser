@@ -105,12 +105,12 @@ class ParsersManagerCommand extends Command
         $sqIds =  SearchQuery::query()->select('id')
             ->where('is_enabled', 1)
             ->where(fn ($builder) => $builder
-                ->whereBetween('launch_time', [now()->format('H:i:s'), now()->add('1 hour')->format('H:i:s')])
-                 ->orWhere(fn($builderOr) => $builderOr->whereNull('launch_time'))
-            )
-            ->whereNotIn('id', $runningTasks)
-            ->orderByRaw('priority DESC, updated_at ASC')
-            ->limit($limit)->get()->pluck('id')->toArray();
+                ->where('launch_time', '>=', now()->floorUnit('hour')->format('H:i:s'))
+                ->where('launch_time', '<=', now()->ceilUnit('hour')->format('H:i:s'))                                                       
+            )                                                                                                                                
+            ->whereNotIn('id', $runningTasks)                                                                                                
+            ->orderByRaw('priority DESC, updated_at ASC')                                                                                    
+            ->limit($limit)->get()->pluck('id')->toArray();  
 
         Log::channel('daily')->debug('Tasks for run:'.print_r($sqIds, true));
 
