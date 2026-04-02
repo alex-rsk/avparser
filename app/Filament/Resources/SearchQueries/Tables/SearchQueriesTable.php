@@ -23,10 +23,6 @@ class SearchQueriesTable
         return $table
             ->columns([
                 TextColumn::make('title')->label('Название'),
-                TextColumn::make('mode')->label('Что ищем')->formatStateUsing(fn($state) => match($state) {
-                    'url' => 'URL запроса',
-                    'text' => 'Текстовый запрос'
-                }),
                 //TextColumn::make('query_text')->label('Запрос'),
                 TextColumn::make('queryable')->label('Искомое')->getStateUsing(function ($record) {
                     return $record->mode == 'url' ? '<a style="color:blue" href="'.$record->category_url.'">Ссылка</a>' : '<span>'.$record->query_text.'</span>';
@@ -48,7 +44,7 @@ class SearchQueriesTable
                 })?->since(),
                 TextColumn::make('total_pages')->label('Страниц'),
                 TextColumn::make('ads_count')->label('Кол-во объявлений'),
-                TextColumn::make('priority')->label('Приоритет'),
+                //TextColumn::make('priority')->label('Приоритет'),
             ])
             ->filters([
                 //
