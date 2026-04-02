@@ -13,7 +13,7 @@ use Filament\Tables\Table;
 use App\Services\ParserPool;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
-use App\Models\Settings;
+use App\Models\{Settings, SearchQuery};
 use Illuminate\Support\Facades\URL;
 
 class SearchQueriesTable
@@ -76,9 +76,10 @@ class SearchQueriesTable
                         else {
 
                             $pool = new ParserPool();
+                            $enabledCount = SearchQuery::query()->where('is_enabled', 1)->count();
                             $runningTasks = $pool->getActualProcessesCount();
                             $capacity = Settings::getBySlug('browser_process_count') ?? 1;
-                            if ($runningTasks >= $capacity) {
+                            if (max($runningTasks, $enabledCount) >= $capacity) {
                                 Notification::make()
                                     ->title('Не могу запустить парсер сейчас')
                                     ->body('Лимит одновременно запущенных экземпляров парсера достигнут. Увеличьте лимит или остановите часть задач')

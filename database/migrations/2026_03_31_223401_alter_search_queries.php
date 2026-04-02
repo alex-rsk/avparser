@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('search_queries', function (Blueprint $table) {
-            $table->time('launch_time')->after('category_url')->default('20:00:00')->nullable();
-            $table->unsignedInteger('launch_interval')->after('launch_time')->default(24*60*60);
+        Schema::table('search_queries', function (Blueprint $table) {        
+            $table->unsignedInteger('launch_interval')->after('launch_time')->nullable()->change();
         });
     }
 
@@ -22,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropColumns('search_queries', ['launch_time', 'launch_interval']);
+        Schema::table('search_queries', function (Blueprint $table) {
+            $table->unsignedInteger('launch_interval')->after('launch_time')->change();
+        });
     }
 };
