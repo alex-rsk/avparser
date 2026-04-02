@@ -38,7 +38,7 @@ class SearchQueriesTable
                     $logFileName = storage_path('logs/' . \App\Services\ParserService::LOG_PREFIX . $searchQueryId . '.log');
                     if (file_exists($logFileName)) {
                         $lastActivityTime = filemtime($logFileName);
-                        return date('Y-m-d H:i:s');
+                        return date('Y-m-d H:i:s', $lastActivityTime);
                     }
                     return null;
                 })?->since(),
