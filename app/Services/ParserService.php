@@ -225,7 +225,7 @@ class ParserService
             $this->log('Error running script for totalViews: '.$ex->getMessage());
         }
 
-        return [ intval(preg_replace('~\D~', '',  $todayViews)) ?? null,  intval($totalViews) ?? null];
+        return [ intval(preg_replace('~\D~', '',  $todayViews ?? 0)) ?? null,  intval($totalViews) ?? null];
     }
 
     private function getTotalPages() : ?int
@@ -431,7 +431,7 @@ class ParserService
             $ratings = $this->getRatings($title);
 
             $filteredReviews = array_filter($ratings['reviews'], function ($review) use ($title) {
-                return true;//trim($review['title']) == trim($title);
+                return trim($review['title']) == trim($title);
             });
 
             array_walk($filteredReviews, function (&$review) {

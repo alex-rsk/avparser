@@ -37,7 +37,15 @@ class SearchQueriesTable
                     'stopped' => 'Остановлен',
                     'error' => 'Ошибка'
                 }),
-                TextColumn::make('observed_at')->label('Обновление')->since(),
+                TextColumn::make('observed_at')->label('Обновление')->getStateUsing(function ($record) : ?string {
+                    $searchQueryId = $record->id;
+                    $logFileName = storage_path('logs/' . \App\Services\ParserService::LOG_PREFIX . $searchQueryId . '.log');
+                    if (file_exists($logFileName)) {
+                        $lastActivityTime = filemtime($logFileName);
+                        return date('Y-m-d H:i:s');
+                    }
+                    return null;
+                })?->since(),
                 TextColumn::make('total_pages')->label('Страниц'),
                 TextColumn::make('ads_count')->label('Кол-во объявлений'),
                 TextColumn::make('priority')->label('Приоритет'),
