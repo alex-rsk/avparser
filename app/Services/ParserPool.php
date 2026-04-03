@@ -104,15 +104,17 @@ class ParserPool
 
     public function removeBrowserInstance(ParserTask $parserTask)
     {        
-        $cmd = 'kill -9 '.$parserTask->process_pid;
-        shell_exec($cmd);
-        $parserTask->status = 'stopped';
-        $parserTask->process_pid = 0;
-        $parserTask->save();
+        if (!empty($parserTask->process_pid)) {
+            $cmd = 'kill -9 '.$parserTask->process_pid;
+            shell_exec($cmd);
+            $parserTask->status = 'stopped';
+            $parserTask->process_pid = 0;
+            $parserTask->save();
+        }
+
         if (isset($this->tasks[$parserTask->searchQuery->query_text])) {
             unset($this->tasks[$parserTask->searchQuery->query_text]);
         }
     }
-
 
 }
