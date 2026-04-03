@@ -31,7 +31,10 @@ class ParsersManagerCommand extends Command
      */
     public function handle()
     {
+        ParserPool::killOrphanedProcesses();
+
         $pool = ParserPool::getInstance();
+
         $runningTasks = $pool->getActualProcessesCount();
         //dump($runningTasks);
         $capacity = Settings::getBySlug('browser_process_count') ?? 1;
@@ -106,7 +109,7 @@ class ParsersManagerCommand extends Command
             ->where('is_enabled', 1)
             ->where(fn ($builder) => $builder
                 ->where('launch_time', '>=', now()->floorUnit('hour')->format('H:i:s'))
-                ->where('launch_time', '<=', now()->ceilUnit('hour')->format('H:i:s'))                                                       
+                ->where('launch_time', '<=', now()->ceilUnit('hour')->format('H:i:s'))
             )                                                                                                                                
             ->whereNotIn('id', $runningTasks)                                                                                                
             ->orderByRaw('priority DESC, updated_at ASC')                                                                                    

@@ -39,7 +39,7 @@ class ParserPool
                     $parserTask->status = 'paused';
                     $parserTask->process_pid = 0;
                     $parserTask->save();
-                } 
+                }
             } else {
                 Log::channel('daily')->warning('Process pid is empty, process task ID: '.$parserTask->id);
             }
@@ -84,10 +84,41 @@ class ParserPool
         return (int)trim($process->getOutput());
     }
 
+    public static function killOrphanedProcesses()
+    {
+        $killed = 0;
+        $chromeProcs = [];
+        foreach (glob('/proc/[0-9]*/cmdline', GLOB_NOSORT) as $cmdline) {
+            $pid = (int)explode('/', $cmdline)[2];
+            $content = file_get_contents($cmdline);
+            if (preg_match('#--user-data-dir=.*avito(\d+)#', str_replace("\0", ' ', $content), $m)) {
+                $chromeProcs[$pid] = (int)$m[1];
+            }
+        }
+
+        foreach ($chromeProcs as $pid => $taskId) {
+            if (ParserTask::query()->where('search_query_id', $taskId)->count() == 0 )
+            {
+                $cmd = "kill -9 $pid";
+                echo 'Kill '.$pid;
+                shell_exec($cmd);
+                $killed++;
+            }
+        }
+
+        if ($killed > 0) {
+            Log::channel('daily')->debug('Killed: '.$killed);
+        } else {
+            Log::channel('daily')->debug('Nothing to kill');
+        }
+
+    }
+
+
     public function addBrowserInstance(ParserTask $parserTask) : ?int
     {
-        try {            
-            
+        try {
+
             Log::channel('browser')->debug('Create new parser service');
             $ps = new ParserService($parserTask->searchQuery->id);
             $ps->run($parserTask);
@@ -103,7 +134,7 @@ class ParserPool
 
 
     public function removeBrowserInstance(ParserTask $parserTask)
-    {        
+    {
         if (!empty($parserTask->process_pid)) {
             $cmd = 'kill -9 '.$parserTask->process_pid;
             shell_exec($cmd);
