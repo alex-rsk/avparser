@@ -6,6 +6,7 @@ use App\Services\HeadlessBrowser\HeadlessBrowserWrapper;
 use App\Services\HelperService;
 use Illuminate\Support\Facades\{Log, DB};
 use HeadlessChromium\Page;
+use Illuminate\Support\Str;
 use App\Models\{Ad, AdView, AdReview, SearchQuery, ParserTask} ;
 use HeadlessChromium\Dom\Selector\CssSelector;
 use HeadlessChromium\Dom\Selector\XPathSelector;
@@ -614,10 +615,11 @@ class ParserService
 
 
         $this->log("Downloading..");
-        $smDestFilename = base_path('capsolver/input/small.png');
+        $uuid = Str::uuid();
+        $smDestFilename = base_path('capsolver/input/small_'.$uuid.'.png');
         HelperService::downloadFile($smallUrl, $smDestFilename);
 
-        $lgDestFilename = base_path('capsolver/input/large.png');
+        $lgDestFilename = base_path('capsolver/input/large_'.$uuid.'.png');
         HelperService::downloadFile($largeUrl, $lgDestFilename);
 
         $this->log('Captcha background: '. $imageLarge);
@@ -630,6 +632,9 @@ class ParserService
         if (!is_numeric($cleanedOutput)) {
             $this->log('Dirty output: '.$cleanedOutput, 'warning');
         }
+ 
+        @unlink($lgDestFilename);
+        @unlink($smDestFilename);
 
         //X- координата места для пазла, относительно X- координаты подложки
         $targetX = intval($cleanedOutput);

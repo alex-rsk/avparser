@@ -16,7 +16,7 @@ def logging(message):
     except IOError as e:
         print(f"An error occurred while writing to the file: {e}")
 
-def process_small_image(path, threshold):
+def process_small_image(task_uuid, path, threshold):
 
     try:
         if not os.path.exists(path):
@@ -25,8 +25,8 @@ def process_small_image(path, threshold):
 
         im_small = path
         assets_dir = os.path.join(os.path.dirname(os.path.dirname(im_small)), "assets")
-        temp_file = Path(os.path.join(assets_dir,  "temp_small.png"))
-        outfile = Path(os.path.join(assets_dir,  "IM_SMALL.png"))
+        temp_file = Path(os.path.join(assets_dir,  "temp_small_" + task_uuid + ".png"))
+        outfile = Path(os.path.join(assets_dir,  "IM_SMALL_"+task_uuid+".png"))
         # Step 1: Threshold
         cmd_threshold = [
             "convert",
@@ -72,7 +72,7 @@ def process_small_image(path, threshold):
         return False
 
 
-def process_big_image(path, threshold, puzzle_top_coord, puzzle_height):
+def process_big_image(task_uuid, path, threshold, puzzle_top_coord, puzzle_height):
 
     if not os.path.exists(path):
         logging(f"Error: Big image not found: {path}")
@@ -80,11 +80,11 @@ def process_big_image(path, threshold, puzzle_top_coord, puzzle_height):
 
     assets_dir = os.path.join(os.path.dirname(os.path.dirname(path)), "assets")
 
-    temp_file = Path(os.path.join(assets_dir,  "temp_small.png"))
+    temp_file = Path(os.path.join(assets_dir,  "temp_big_" + task_uuid + ".png"))
 
     im_large = path
 
-    out_file = Path(os.path.join(assets_dir,  "IM_LARGE.png"))
+    out_file = Path(os.path.join(assets_dir,  "IM_LARGE_" + task_uuid + ".png"))
 
     if not os.path.exists(path):
         logging(f"Error: Large image not found: {path}")
@@ -99,6 +99,9 @@ def process_big_image(path, threshold, puzzle_top_coord, puzzle_height):
         ]
         
         subprocess.run(cmd, check=True)
+
+        if temp_file.exists():
+            temp_file.unlink()
     except subprocess.CalledProcessError as e:
         print(f"{e.stderr}")
         return False
