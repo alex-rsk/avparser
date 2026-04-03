@@ -53,7 +53,7 @@ assets_dir.mkdir(exist_ok=True)
 process_small_image(task_uuid, small_image, threshold_sm)
 process_big_image(task_uuid, large_image, threshold_lg, puzzle_top_coord, puzzle_height)
 
-needle_path = os.path.join(assets_dir, f"IM_SMALL_task_{task_uuid}.png")
+needle_path = os.path.join(assets_dir, f"IM_SMALL_{task_uuid}.png")
 haystack_path = os.path.join(assets_dir, f"IM_LARGE_{task_uuid}.png")
 find_threshold = 0.15
 res = find_subimage(needle_path, haystack_path, find_threshold)

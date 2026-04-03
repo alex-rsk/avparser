@@ -624,7 +624,7 @@ class ParserService
 
         $this->log('Captcha background: '. $imageLarge);
 
-        $solverCmd = base_path('dist/capsolver'). ' ' . $smDestFilename . ' ' . $lgDestFilename . ' ' . $puzzleRelativeTop;
+        $solverCmd = base_path('dist/capsolver'). ' '.$uuid. ' ' . $smDestFilename . ' ' . $lgDestFilename . ' ' . $puzzleRelativeTop;
         $this->log($solverCmd);
 
         $output = shell_exec($solverCmd);
