@@ -26,25 +26,9 @@ class ParsersManagerCommand extends Command
      */
     protected $description = 'Command description';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+
+    private function turnOffs()
     {
-        ParserPool::killOrphanedProcesses();
-
-        $pool = ParserPool::getInstance();
-
-        $runningTasks = $pool->getActualProcessesCount();
-        //dump($runningTasks);
-        $capacity = Settings::getBySlug('browser_process_count') ?? 1;
-        $limit =  $capacity - $runningTasks;
-
-        if ($limit <= 0) {
-            Log::channel('daily')->debug('No place for tasks');
-            return ;
-        }
-
         $timeLimit = self::NO_CHANGES_MIN*60;
 
         // Прибить задачи, логи в которых не обновляются >NO_CHANGES_MIN  мин
@@ -56,7 +40,7 @@ class ParsersManagerCommand extends Command
                 if (file_exists($logFileName)) {
 
                     $lastActivityTime = filemtime($logFileName);
-                    return (time() - $lastActivityTime >$timeLimit);
+                    return (time() - $lastActivityTime > $timeLimit);
                 }
                 return false;
             });
@@ -68,10 +52,6 @@ class ParsersManagerCommand extends Command
         $disabled =  ParserTask::query()->where('status', 'active')->whereHas('searchQuery', function ($builder) {
             return $builder->where('is_enabled', 0);
         })->get();
-
-        foreach ($tooLongExecuting as $tlItem) {
-            Log::channel('daily')->debug('Too long executing: [ID:'.$tlItem->id.'] PID:'.$tlItem->process_pid);
-        }
 
         $idsToDelete = [];
 
@@ -96,6 +76,28 @@ class ParsersManagerCommand extends Command
         if (count($idsToDelete)> 0) {
             ParserTask::query()->whereIn('id', $idsToDelete)->delete();
         }
+    }
+
+    /**
+     * Execute the console command.
+     */
+    public function handle()
+    {
+        ParserPool::killOrphanedProcesses();
+        $this->turnOffs();
+
+        $pool = ParserPool::getInstance();
+
+
+        $runningTasks = $pool->getActualProcessesCount();
+        //dump($runningTasks);
+        $capacity = Settings::getBySlug('browser_process_count') ?? 1;
+        $limit =  $capacity - $runningTasks;
+
+        if ($limit <= 0) {
+            Log::channel('daily')->debug('No place for tasks');
+            return ;
+        }
 
         // Получить уже запущенные задачи
         $runningTasks = ParserTask::query()->select('search_query_id')->whereIn('stage',['new', 'pages', 'ads'])
@@ -110,10 +112,10 @@ class ParsersManagerCommand extends Command
             ->where(fn ($builder) => $builder
                 ->where('launch_time', '>=', now()->floorUnit('hour')->format('H:i:s'))
                 ->where('launch_time', '<=', now()->ceilUnit('hour')->format('H:i:s'))
-            )                                                                                                                                
-            ->whereNotIn('id', $runningTasks)                                                                                                
-            ->orderByRaw('priority DESC, updated_at ASC')                                                                                    
-            ->limit($limit)->get()->pluck('id')->toArray();  
+            )
+            ->whereNotIn('id', $runningTasks)
+            ->orderByRaw('priority DESC, updated_at ASC')
+            ->limit($limit)->get()->pluck('id')->toArray();
 
         Log::channel('daily')->debug('Tasks for run:'.print_r($sqIds, true));
 
@@ -150,9 +152,6 @@ class ParsersManagerCommand extends Command
 
             $cmd = 'nohup php artisan parser:run '.$pTask->id.' > /dev/null 2>/dev/null & echo $!';
             Log::channel('daily')->debug($cmd);
-            //$process = Process::fromShellCommandLine('nohup php artisan parser:run '.$pTask->id.' > /dev/null 2>/dev/null &');
-            //$process->setTimeout(3600);
-            //$process->start();
             $pid = shell_exec($cmd);
             dump($pid);
 
@@ -163,7 +162,6 @@ class ParsersManagerCommand extends Command
             $pTask->save();
             Log::channel('daily')->debug('Started for search query '.$sqId);
             sleep(2);
-            //$process->wait();
         }
     }
 }
