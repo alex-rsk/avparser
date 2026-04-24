@@ -60,8 +60,8 @@ class ReportService
         $lastHeaderLetter =  $letters[count($headers)];
         $activeWorksheet->getStyle('A2:'.$lastHeaderLetter.'2')->applyFromArray($styleArray);
 
-        $fromStr        = str_replace('-','_', $from);
-        $toStr          = str_replace('-','_', $to);
+        $fromStr        = str_replace(' 00:00:00', '_', str_replace('-','_', $from));
+        $toStr          = str_replace(' 00:00:00', '_', str_replace('-','_', $to));
         $searchQuery    = SearchQuery::findOrFail($searchQueryId);
         $latinized      = Str::slug($searchQuery->title);
         $reportName     = storage_path('base_report_'.$latinized.'_'.$fromStr.'__'.$toStr.'.xlsx');
@@ -96,8 +96,8 @@ class ReportService
                 'ads.id'
             )
             ->where('search_query_id', $searchQueryId)
-            ->whereNotNull('ads.last_visited_at');
-        //    ->whereBetween('ads.created_at', [ $from, $to]);
+            ->whereNotNull('ads.last_visited_at')
+            ->whereBetween('ads.created_at', [ $from, $to]);
 
         $sql = $query->toSql();
         Log::channel('reports')->debug('SQL:'.$sql);
