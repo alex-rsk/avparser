@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\{HasMany,BelongsTo};
-use App\Models\{Customer, SearchQuery};
+use Illuminate\Database\Eloquent\Relations\{HasMany, BelongsTo, HasOne};
+use App\Models\{Customer, SearchQuery, AvitoCategory};
 
 class Order extends Model
 {
@@ -20,6 +20,11 @@ class Order extends Model
     public function searchQueries() : HasMany 
     {
         return $this->hasMany(SearchQuery::class);
+    }
+
+    public function category() : HasOne
+    {
+        return $this->hasOne(AvitoCategory::class, 'category_id');
     }
     
 }

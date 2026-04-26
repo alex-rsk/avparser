@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Orders\Schemas;
 
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 
 class OrdersInfolist
 {
@@ -10,7 +11,8 @@ class OrdersInfolist
     {
         return $schema
             ->components([
-                //
+                TextColumn::make('id'),
+                TextColumn::make('category.title'),
             ]);
     }
 }
