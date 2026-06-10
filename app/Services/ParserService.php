@@ -17,7 +17,8 @@ class ParserService
     const CAPTCHA_WAIT_ATTEMPTS = 5;
     const LOG_PREFIX = 'parser_';
     const ALLOWED_LEVELS = ['debug', 'warning', 'error', 'info'];
-
+    
+    const GET_PAGES_ATTEMPTS = 3;
 
     private ParserTask $task;
 
@@ -677,19 +678,15 @@ class ParserService
     private function handleCaptcha(Page|int $page, int $attempts = 10) : bool
     {
         try {
-            $this->log('hc 1');
             $attempts = self::CAPTCHA_WAIT_ATTEMPTS;
             $captchaFound = 0;
             $pageObj = $page instanceof Page ? $page : $this->browser->getTab($page);
-            $this->log('hc 2');
             try {
                 while ($attempts-- > 0 && $captchaFound == 0) {
-                    $this->log('hc while 1');
                     $this->log('Waiting for captcha... Attempt '.((self::CAPTCHA_WAIT_ATTEMPTS+1)-$attempts));
                     sleep(2);
                     $captchaFound = $this->browser->runScriptOnPage($pageObj, 'check_element_presence', [
                         'selector' => '#geetest_captcha', 'xpath' => false], 10);
-                    $this->log('hc while 2');
                 }
             }
             catch (\Exception $ex)
@@ -778,12 +775,22 @@ class ParserService
 
     }
 
-    private function handleUrlTask(ParserTask $task)
+    private function handleUrlTask(ParserTask $task, $attempts = 3)
     {
+        if ($attempts <= 0) {
+            $this->log('Attempts getting pages exceeded');
+            return false;
+        }
+
         $query = $task->searchQuery;
         $this->log('STEP 1 >>>> Open category URL');
-        $this->browser->navigateTab(0, $task->searchQuery->category_url);
+        if ($attempts == 3) {
+            //Если первая попытка, то переходим на вкладку
+            $this->browser->navigateTab(0, $task->searchQuery->category_url);
+        }
+
         sleep(2);
+
         if (!$this->handleCaptcha(0)) {
             $this->log('Cannot solve captcha');
             $this->browser->close();
@@ -793,7 +800,12 @@ class ParserService
         $task->stage = 'pages';
         $task->save();
         $totalPages = $this->getTotalPages();
+
         $this->log('Pages count: ' . $totalPages);
+
+        if (empty ($totalPages)) {
+            return $this->handleUrlTask($task, $attempts--);
+        }   
 
         //Для теста
         if ($totalPages > self::PAGE_LIMIT) {
